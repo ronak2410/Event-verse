@@ -4,16 +4,24 @@ import { EventDetails } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    // Basic body size/presence safety
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    }
+
     const { action, event, message, chatHistory, apiKey } = body;
+
+    // Sanitize API key if passed as string
+    const sanitizedApiKey = typeof apiKey === "string" ? apiKey.trim() : undefined;
 
     // 1. Generate / Regenerate Full Event Plan
     if (action === "generate_plan") {
-      if (!event) {
-        return NextResponse.json({ error: "Missing event details" }, { status: 400 });
+      if (!event || typeof event !== "object") {
+        return NextResponse.json({ error: "Missing or malformed event details" }, { status: 400 });
       }
 
-      const planResult = await generateFullEventPlan(event as EventDetails, apiKey);
+      const planResult = await generateFullEventPlan(event as EventDetails, sanitizedApiKey);
       return NextResponse.json(planResult);
     }
 
@@ -34,7 +42,7 @@ Respond concisely as an elite event stylist and coordinator. If the user is aski
 Keep tone warm, creative, structured, and inspiring.
 `;
 
-      const { text, isLive } = await callGeminiAPI(prompt, undefined, apiKey);
+      const { text, isLive } = await callGeminiAPI(prompt, undefined, sanitizedApiKey);
 
       if (isLive && text) {
         return NextResponse.json({
@@ -91,7 +99,7 @@ Return strictly JSON:
 }
 `;
 
-      const { text, isLive } = await callGeminiAPI(prompt, EVENT_PLANNER_SYSTEM_PROMPT, apiKey);
+      const { text, isLive } = await callGeminiAPI(prompt, EVENT_PLANNER_SYSTEM_PROMPT, sanitizedApiKey);
       if (isLive && text) {
         try {
           const clean = text.replace(/```json/g, "").replace(/```/g, "").trim();

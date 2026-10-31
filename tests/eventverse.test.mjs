@@ -240,5 +240,37 @@ test('Category overspend math reports precise budget delta and status flag', () 
   assert.equal(exceeded.amount, 1250);
 });
 
+// Test 15: CSV Sanitization & Escape Protection
+function sanitizeCsvCell(value) {
+  if (value === null || value === undefined) return '""';
+  const stringValue = String(value);
+  // Neutralize formula injection triggers (=, +, -, @)
+  const neutralized = /^[=+\-@]/.test(stringValue) ? `'${stringValue}` : stringValue;
+  return `"${neutralized.replace(/"/g, '""')}"`;
+}
+
+test('CSV Cell sanitization neutralizes formula injection triggers and escapes quotes', () => {
+  assert.equal(sanitizeCsvCell('=SUM(A1:A10)'), '"\'=SUM(A1:A10)"');
+  assert.equal(sanitizeCsvCell('+cmd|"/c calc"!A0'), '"\'+cmd|""/c calc""!A0"');
+  assert.equal(sanitizeCsvCell('Maya & Noah\'s "Grand" Wedding'), '"Maya & Noah\'s ""Grand"" Wedding"');
+  assert.equal(sanitizeCsvCell('Regular Plain Text'), '"Regular Plain Text"');
+});
+
+// Test 16: Hex Color Palette Validation
+function isValidHexColor(hex) {
+  return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex);
+}
+
+test('Curated color palette hex values match strict valid CSS formats', () => {
+  assert.equal(isValidHexColor('#00F0FF'), true); // Neon Cyan
+  assert.equal(isValidHexColor('#8B5CF6'), true); // Neon Purple
+  assert.equal(isValidHexColor('#FF007F'), true); // Neon Pink
+  assert.equal(isValidHexColor('#00FF9D'), true); // Neon Emerald
+  assert.equal(isValidHexColor('blue'), false);
+  assert.equal(isValidHexColor('#GGGGGG'), false);
+  assert.equal(isValidHexColor(''), false);
+});
+
+
 
 
