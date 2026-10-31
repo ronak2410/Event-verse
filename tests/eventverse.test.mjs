@@ -71,3 +71,28 @@ test('Vendor contract variance is calculated accurately', () => {
   const variance = actual - estimated;
   assert.equal(variance, 500); // 500 over
 });
+
+// Test 5: Contingency Reserve Minimum Threshold Math
+function calculateContingencyReserve(totalBudget, contingencyPercentage) {
+  return Math.round(totalBudget * (contingencyPercentage / 100));
+}
+
+test('Contingency Reserve calculates strictly compliant safety buffers', () => {
+  assert.equal(calculateContingencyReserve(60000, 5), 3000);
+  assert.equal(calculateContingencyReserve(42000, 5), 2100);
+  assert.equal(calculateContingencyReserve(11000, 8), 880);
+});
+
+// Test 6: Sonic Audio Track BPM Classification
+function classifyAudioEnergy(bpm) {
+  if (bpm >= 120) return 'High Voltage Peak';
+  if (bpm >= 90) return 'Groovy & Upbeat';
+  return 'Calm & Elegant';
+}
+
+test('Audio BPM energy levels match soundstage curation specifications', () => {
+  assert.equal(classifyAudioEnergy(128), 'High Voltage Peak');
+  assert.equal(classifyAudioEnergy(94), 'Groovy & Upbeat');
+  assert.equal(classifyAudioEnergy(82), 'Calm & Elegant');
+});
+

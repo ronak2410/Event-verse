@@ -10,6 +10,7 @@ import { TimelineSection } from "@/components/Timeline/TimelineSection";
 import { VendorSection } from "@/components/VendorTracker/VendorSection";
 import { IdeaLabSection } from "@/components/IdeaLab/IdeaLabSection";
 import { SeatingSection } from "@/components/SeatingChart/SeatingSection";
+import { ContingencyMatrixSection } from "@/components/Contingency/ContingencyMatrixSection";
 import { useEventState } from "@/hooks/useEventState";
 import { Sparkles, ShieldCheck, Heart, Github, ExternalLink } from "lucide-react";
 
@@ -128,6 +129,11 @@ export default function Home() {
         {/* Tab 5: Interactive 3D Seating Chart & Dietary Floorplan */}
         {activeTab === "seating" && (
           <SeatingSection />
+        )}
+
+        {/* Tab 6: Plan B Weather & Contingency Matrix */}
+        {activeTab === "contingency" && (
+          <ContingencyMatrixSection event={state.event} />
         )}
       </main>
 

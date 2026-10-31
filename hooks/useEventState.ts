@@ -20,7 +20,7 @@ export function useEventState() {
   const [isHydrated, setIsHydrated] = useState(true);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [userApiKey, setUserApiKey] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<'budget' | 'timeline' | 'vendors' | 'idealab' | 'seating'>('budget');
+  const [activeTab, setActiveTab] = useState<'budget' | 'timeline' | 'vendors' | 'idealab' | 'seating' | 'contingency'>('budget');
 
   // Load from localStorage on mount
   useEffect(() => {
