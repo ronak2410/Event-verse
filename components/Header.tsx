@@ -13,7 +13,9 @@ import {
   Lightbulb, 
   ExternalLink, 
   Printer, 
-  Users 
+  Users,
+  ShieldAlert,
+  Leaf
 } from "lucide-react";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/Badge";
@@ -22,10 +24,12 @@ import { PrintExportModal } from "./PrintExportModal";
 import { EventVerseState } from "@/lib/types";
 import { formatCurrency, exportStateAsMarkdown } from "@/lib/utils";
 
+export type EventTabType = 'budget' | 'timeline' | 'vendors' | 'idealab' | 'seating' | 'contingency' | 'sustainability';
+
 interface HeaderProps {
   state: EventVerseState;
-  activeTab: 'budget' | 'timeline' | 'vendors' | 'idealab' | 'seating';
-  setActiveTab: (tab: 'budget' | 'timeline' | 'vendors' | 'idealab' | 'seating') => void;
+  activeTab: EventTabType;
+  setActiveTab: (tab: EventTabType) => void;
   onOpenWizard: () => void;
   onReset: () => void;
   userApiKey: string;
@@ -230,6 +234,36 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Lightbulb className="w-4 h-4 text-sky-400" />
               <span>Personalized AI Idea Lab</span>
+            </button>
+
+            <button
+              role="tab"
+              aria-selected={activeTab === 'contingency'}
+              aria-label="Plan B Weather and Failover"
+              onClick={() => setActiveTab('contingency')}
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 ${
+                activeTab === 'contingency'
+                  ? 'bg-gradient-to-r from-purple-500/25 to-pink-500/25 text-pink-300 border border-pink-400/60 shadow-neon-pink'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+              }`}
+            >
+              <ShieldAlert className="w-4 h-4 text-neon-pink" />
+              <span>Plan B Weather & Risk</span>
+            </button>
+
+            <button
+              role="tab"
+              aria-selected={activeTab === 'sustainability'}
+              aria-label="ESG Carbon and Eco Assessment"
+              onClick={() => setActiveTab('sustainability')}
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 ${
+                activeTab === 'sustainability'
+                  ? 'bg-gradient-to-r from-emerald-500/25 to-teal-500/25 text-emerald-300 border border-emerald-400/60 shadow-neon-emerald'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+              }`}
+            >
+              <Leaf className="w-4 h-4 text-neon-emerald" />
+              <span>ESG Carbon & Green</span>
             </button>
           </nav>
         </div>

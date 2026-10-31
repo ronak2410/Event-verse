@@ -16,13 +16,15 @@ Planning major life celebrations and milestones is notoriously fragmented:
 - **Vendor contracts and deliverables** get lost in messy email threads and note apps.
 - **Floorplans and dietary requirements** cause chaotic bottlenecks for banquet kitchens during plated meal services.
 
-**EventVerse** solves this by unifying generative AI intelligence with high-precision operational event planning across five cohesive pillars:
+**EventVerse** solves this by unifying generative AI intelligence with high-precision operational event planning across seven cohesive pillars:
 
 1. **Dynamic Budget Estimator**: Real-time slider allocations across 6 critical categories (Venue, Catering, Decor, Entertainment, Photography, Contingency) with mathematically guaranteed 100% normalization, AI strategic reallocation, and 1-click **CSV Ledger Export**.
 2. **Timeline & Schedule Generator**: Milestone phase countdown (months/weeks out) coupled with a minute-by-minute **Day-of Event Run-of-Show** timetable and a **⚡ Staff Live Mode** for mobile coordinator check-ins.
 3. **Interactive Vendor Checklist & CRM**: Procurement directory with status tracking (`Researching`, `Contacted`, `Booked`, `Paid`), deposit checks, contractual variances, and 1-click **CSV Directory Export**.
 4. **Interactive 3D Seating Chart & Dietary Floorplan**: Circular banquet tables with real-time capacity monitoring, individual guest seat assignments, and automatic kitchen counts for dietary requirements (Vegan, Gluten-Free, Halal, Jain Satvik, Regular).
 5. **Personalized AI Idea Lab & Sonic Soundstage**: Multi-turn creative concierge generating bespoke atmosphere concepts, HEX color palettes, icebreakers, multi-tone invitation copies, and moment-by-moment **Soundstage Music Run-of-Show** with live audio visualizer stems.
+6. **Plan B Weather & Crisis Contingency Failover Matrix**: Weather radar simulation triggering real-time venue backup protocols, power generator failovers, and incident cut-off deadlines.
+7. **ESG Carbon Abatement & Sustainable Event Engine**: Automated carbon footprint breakdown (transport, food waste, energy) with eco-grading tiers and reduction certificates.
 
 ---
 
