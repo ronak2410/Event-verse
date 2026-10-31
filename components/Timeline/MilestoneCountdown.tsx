@@ -85,6 +85,7 @@ export const MilestoneCountdown: React.FC<MilestoneCountdownProps> = ({
                 >
                   <button
                     type="button"
+                    aria-label={`Toggle completion for ${task.title}`}
                     className="mt-0.5 text-slate-400 group-hover:text-neon-cyan transition-colors shrink-0"
                   >
                     {task.completed ? (

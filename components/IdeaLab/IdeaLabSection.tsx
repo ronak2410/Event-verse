@@ -1,14 +1,13 @@
 "use client";
 
 import React from "react";
-import { Lightbulb, Sparkles, Wand2, Palette, Mail, MessageSquare } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { PaletteDisplay } from "./PaletteDisplay";
 import { InvitationGenerator } from "./InvitationGenerator";
 import { ActivitiesList } from "./ActivitiesList";
 import { SoundstageTracklist } from "./SoundstageTracklist";
 import { ChatAssistant } from "./ChatAssistant";
 import { Badge } from "../ui/Badge";
-import { Card } from "../ui/Card";
 import { EventVerseState } from "@/lib/types";
 
 interface IdeaLabSectionProps {
@@ -22,7 +21,7 @@ export const IdeaLabSection: React.FC<IdeaLabSectionProps> = ({
   onSendMessage,
   isAiLoading
 }) => {
-  const { ideaLab, event } = state;
+  const { ideaLab } = state;
 
   return (
     <div className="space-y-6">

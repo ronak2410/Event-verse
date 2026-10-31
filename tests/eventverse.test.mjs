@@ -173,4 +173,72 @@ test('Day-of run-of-show timeline progresses chronologically', () => {
   assert.equal(isChronologicallyOrdered(brokenSchedule), false);
 });
 
+// Test 11: Vendor Committed Spend Calculation
+function calculateCommittedSpend(vendors) {
+  return vendors
+    .filter((v) => v.status === 'Booked' || v.status === 'Paid')
+    .reduce((acc, v) => acc + (v.actualCost || v.estimatedCost), 0);
+}
+
+test('Committed spend accurately aggregates Booked and Paid contracts only', () => {
+  const vendors = [
+    { name: 'Palace Hall', status: 'Paid', estimatedCost: 15000, actualCost: 15500 },
+    { name: 'DJ Sanj', status: 'Booked', estimatedCost: 3500, actualCost: 3200 },
+    { name: 'Florist Bloom', status: 'Contacted', estimatedCost: 4000, actualCost: 4000 },
+    { name: 'Ice Cream Cart', status: 'Researching', estimatedCost: 800, actualCost: 0 }
+  ];
+  // 15500 + 3200 = 18700
+  assert.equal(calculateCommittedSpend(vendors), 18700);
+});
+
+// Test 12: Zero Budget / Zero Guest Boundary Protection
+function calculateSafePerGuest(totalBudget, guestCount) {
+  if (!guestCount || guestCount <= 0) return 0;
+  if (!totalBudget || totalBudget <= 0) return 0;
+  return Math.round(totalBudget / guestCount);
+}
+
+test('Per-guest calculations cleanly protect against divide-by-zero boundaries', () => {
+  assert.equal(calculateSafePerGuest(42000, 0), 0);
+  assert.equal(calculateSafePerGuest(0, 100), 0);
+  assert.equal(calculateSafePerGuest(-5000, 50), 0);
+  assert.equal(calculateSafePerGuest(50000, 200), 250);
+});
+
+// Test 13: Milestone Task Completion Ratio
+function calculateMilestoneProgress(milestones) {
+  const total = milestones.reduce((acc, m) => acc + m.tasks.length, 0);
+  if (total === 0) return 0;
+  const completed = milestones.reduce((acc, m) => acc + m.tasks.filter((t) => t.completed).length, 0);
+  return Math.round((completed / total) * 100);
+}
+
+test('Milestone completion calculation calculates true integer percentage', () => {
+  const milestones = [
+    { tasks: [{ completed: true }, { completed: true }] },
+    { tasks: [{ completed: true }, { completed: false }] }
+  ];
+  assert.equal(calculateMilestoneProgress(milestones), 75);
+});
+
+// Test 14: Category Variance Math
+function calculateBudgetOverspend(allocated, spent) {
+  const diff = spent - allocated;
+  return {
+    isOver: diff > 0,
+    amount: Math.abs(diff)
+  };
+}
+
+test('Category overspend math reports precise budget delta and status flag', () => {
+  const normal = calculateBudgetOverspend(5000, 4200);
+  assert.equal(normal.isOver, false);
+  assert.equal(normal.amount, 800);
+
+  const exceeded = calculateBudgetOverspend(5000, 6250);
+  assert.equal(exceeded.isOver, true);
+  assert.equal(exceeded.amount, 1250);
+});
+
+
 

@@ -94,6 +94,7 @@ export const DayOfRunOfShow: React.FC<DayOfRunOfShowProps> = ({
             {/* Dot Indicator on vertical rail */}
             <button
               onClick={() => onToggleItem(item.id)}
+              aria-label={`Toggle completion for ${item.title}`}
               className={`absolute -left-6 sm:-left-8 top-3.5 w-6 h-6 rounded-full flex items-center justify-center transition-colors z-10 ${
                 item.completed
                   ? "bg-neon-emerald text-slate-950 shadow-neon-emerald"

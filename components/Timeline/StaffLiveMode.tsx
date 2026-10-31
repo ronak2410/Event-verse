@@ -94,6 +94,11 @@ export const StaffLiveMode: React.FC<StaffLiveModeProps> = ({
         {schedule.map((item) => (
           <div
             key={item.id}
+            role="checkbox"
+            tabIndex={0}
+            aria-checked={item.completed}
+            aria-label={`${item.time} ${item.title}`}
+            onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') onToggleItem(item.id); }}
             onClick={() => onToggleItem(item.id)}
             className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 select-none ${
               item.completed

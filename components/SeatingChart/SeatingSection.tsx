@@ -231,7 +231,8 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({ state }) => {
                       <button
                         onClick={() => handleRemoveGuest(table.id, g.id)}
                         className="text-slate-500 hover:text-rose-400 p-1"
-                        title="Remove seat"
+                        aria-label={`Remove seat for ${g.name}`}
+                        title={`Remove seat for ${g.name}`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

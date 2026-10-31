@@ -58,6 +58,7 @@ export const Modal: React.FC<ModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
+        aria-describedby={description ? "modal-desc" : undefined}
         className={cn(
           "relative z-10 w-full overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl animate-fade-in max-h-[90vh] flex flex-col",
           maxWidths[maxWidth]
@@ -66,7 +67,7 @@ export const Modal: React.FC<ModalProps> = ({
         <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h3 id="modal-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
-            {description && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>}
+            {description && <p id="modal-desc" className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>}
           </div>
           <button
             onClick={onClose}

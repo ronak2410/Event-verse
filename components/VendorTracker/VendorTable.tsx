@@ -189,6 +189,7 @@ export const VendorTable: React.FC<VendorTableProps> = ({
                     {/* Status Dropdown */}
                     <select
                       value={vendor.status}
+                      aria-label={`Status for ${vendor.name}`}
                       onChange={(e) => onUpdateStatus(vendor.id, e.target.value as VendorStatus)}
                       className="px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs font-semibold focus:ring-2 focus:ring-neon-cyan outline-none"
                     >
@@ -202,7 +203,8 @@ export const VendorTable: React.FC<VendorTableProps> = ({
                     <button
                       onClick={() => onDeleteVendor(vendor.id)}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                      title="Remove vendor"
+                      aria-label={`Remove vendor ${vendor.name}`}
+                      title={`Remove vendor ${vendor.name}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

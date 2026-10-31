@@ -7,17 +7,13 @@ import {
   DollarSign, 
   Key, 
   Download, 
-  RotateCcw, 
   Check, 
-  Layers,
-  Clock,
-  Briefcase,
-  Lightbulb,
-  ExternalLink,
-  Printer,
-  Users,
-  ShieldAlert,
-  Leaf
+  Clock, 
+  Briefcase, 
+  Lightbulb, 
+  ExternalLink, 
+  Printer, 
+  Users 
 } from "lucide-react";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/Badge";
@@ -157,8 +153,11 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Pillar Navigation Tabs */}
-          <div className="flex space-x-1 sm:space-x-2 border-t border-slate-800/80 overflow-x-auto no-scrollbar py-2">
+          <nav aria-label="Event Planning Pillars" role="tablist" className="flex space-x-1 sm:space-x-2 border-t border-slate-800/80 overflow-x-auto no-scrollbar py-2">
             <button
+              role="tab"
+              aria-selected={activeTab === 'budget'}
+              aria-label="Dynamic Budget Estimator"
               onClick={() => setActiveTab('budget')}
               className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 ${
                 activeTab === 'budget'
@@ -171,6 +170,9 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
+              role="tab"
+              aria-selected={activeTab === 'timeline'}
+              aria-label="Timeline and Day-of Schedule"
               onClick={() => setActiveTab('timeline')}
               className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 ${
                 activeTab === 'timeline'
@@ -183,6 +185,9 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
+              role="tab"
+              aria-selected={activeTab === 'vendors'}
+              aria-label="Vendor Checklist"
               onClick={() => setActiveTab('vendors')}
               className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 ${
                 activeTab === 'vendors'
@@ -198,6 +203,9 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
+              role="tab"
+              aria-selected={activeTab === 'seating'}
+              aria-label="Floorplan and Seating"
               onClick={() => setActiveTab('seating')}
               className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 ${
                 activeTab === 'seating'
@@ -210,6 +218,9 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
+              role="tab"
+              aria-selected={activeTab === 'idealab'}
+              aria-label="Personalized AI Idea Lab"
               onClick={() => setActiveTab('idealab')}
               className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 ${
                 activeTab === 'idealab'
@@ -220,7 +231,7 @@ export const Header: React.FC<HeaderProps> = ({
               <Lightbulb className="w-4 h-4 text-sky-400" />
               <span>Personalized AI Idea Lab</span>
             </button>
-          </div>
+          </nav>
         </div>
       </header>
 
