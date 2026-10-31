@@ -38,6 +38,8 @@ export default function Home() {
     addVendor,
     updateVendor,
     deleteVendor,
+    addGuestToTable,
+    removeGuestFromTable,
     sendIdeaLabMessage,
     resetToDefault
   } = useEventState();
@@ -129,7 +131,11 @@ export default function Home() {
 
         {/* Tab 5: Interactive 3D Seating Chart & Dietary Floorplan */}
         {activeTab === "seating" && (
-          <SeatingSection />
+          <SeatingSection
+            state={state}
+            onAddGuest={addGuestToTable}
+            onRemoveGuest={removeGuestFromTable}
+          />
         )}
 
         {/* Tab 6: Plan B Weather & Contingency Matrix */}

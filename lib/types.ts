@@ -134,6 +134,21 @@ export interface AIIdeaLabData {
   playlistSoundtrack?: MusicTrackIdea[];
 }
 
+export interface SeatingGuest {
+  id: string;
+  name: string;
+  dietary: 'Regular' | 'Vegan' | 'Vegetarian' | 'Gluten-Free' | 'Halal' | 'Jain';
+  plusOne?: string;
+}
+
+export interface TableLayout {
+  id: string;
+  number: number;
+  name: string;
+  capacity: number;
+  guests: SeatingGuest[];
+}
+
 export interface EventVerseState {
   version: string;
   lastUpdated: string;
@@ -144,5 +159,7 @@ export interface EventVerseState {
   milestones: TimelineMilestone[];
   dayOfSchedule: DayOfScheduleItem[];
   vendors: Vendor[];
+  tables?: TableLayout[];
   ideaLab: AIIdeaLabData;
 }
+

@@ -11,7 +11,7 @@ import {
 import { CATEGORY_METADATA } from "./mockData";
 
 export interface AIPlanGenerationResult {
-  allocations: Record<BudgetCategoryKey, Partial<CategoryAllocation>>;
+  allocations: Record<BudgetCategoryKey, CategoryAllocation>;
   milestones: TimelineMilestone[];
   dayOfSchedule: DayOfScheduleItem[];
   vendors: Vendor[];
@@ -194,7 +194,7 @@ Return a JSON object conforming strictly to this structure:
       const parsed = JSON.parse(cleanJson);
 
       // Sanitize and attach allocations
-      const fullAllocations: any = {};
+      const fullAllocations = {} as Record<BudgetCategoryKey, CategoryAllocation>;
       const keys: BudgetCategoryKey[] = ['venue', 'catering', 'decor', 'entertainment', 'photography', 'contingency'];
       
       keys.forEach(k => {
@@ -267,7 +267,7 @@ export function generateDeterministicSmartPlan(event: EventDetails): AIPlanGener
     percentages = { venue: 26, catering: 30, decor: 12, entertainment: 10, photography: 17, contingency: 5 };
   }
 
-  const fullAllocations: any = {};
+  const fullAllocations = {} as Record<BudgetCategoryKey, CategoryAllocation>;
   const keys: BudgetCategoryKey[] = ['venue', 'catering', 'decor', 'entertainment', 'photography', 'contingency'];
   keys.forEach(k => {
     const meta = CATEGORY_METADATA[k];

@@ -82,7 +82,7 @@ export const AddVendorModal: React.FC<AddVendorModalProps> = ({
             </label>
             <select
               value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value as BudgetCategoryKey })}
               className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs outline-none focus:ring-2 focus:ring-neon-cyan capitalize"
             >
               <option value="venue">Venue & Rentals</option>

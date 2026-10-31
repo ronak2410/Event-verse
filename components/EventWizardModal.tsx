@@ -179,7 +179,7 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
               <button
                 type="button"
                 key={p.id}
-                onClick={() => setFormData({ ...formData, priorityFocus: p.id as any })}
+                onClick={() => setFormData({ ...formData, priorityFocus: p.id as EventDetails['priorityFocus'] })}
                 className={`p-2.5 rounded-xl border text-left transition-all ${
                   formData.priorityFocus === p.id
                     ? 'border-neon-cyan bg-neon-cyan/15 text-white ring-2 ring-neon-cyan/30 shadow-neon-cyan'

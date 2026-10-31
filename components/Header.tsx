@@ -62,7 +62,28 @@ export const Header: React.FC<HeaderProps> = ({
     setTimeout(() => setCopiedMd(false), 2500);
   };
 
-  const totalSpent = Object.values(state.budgetAllocations).reduce((acc, c) => acc + c.spentAmount, 0);
+  const tabKeys: EventTabType[] = ['budget', 'timeline', 'vendors', 'seating', 'idealab', 'contingency', 'sustainability'];
+
+  const handleTabKeyDown = (e: React.KeyboardEvent, currentTab: EventTabType) => {
+    const currentIndex = tabKeys.indexOf(currentTab);
+    if (currentIndex === -1) return;
+
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      const nextIndex = (currentIndex + 1) % tabKeys.length;
+      setActiveTab(tabKeys[nextIndex]);
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const prevIndex = (currentIndex - 1 + tabKeys.length) % tabKeys.length;
+      setActiveTab(tabKeys[prevIndex]);
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      setActiveTab(tabKeys[0]);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      setActiveTab(tabKeys[tabKeys.length - 1]);
+    }
+  };
 
   return (
     <>
@@ -160,8 +181,10 @@ export const Header: React.FC<HeaderProps> = ({
           <nav aria-label="Event Planning Pillars" role="tablist" className="flex space-x-1 sm:space-x-2 border-t border-slate-800/80 overflow-x-auto no-scrollbar py-2">
             <button
               role="tab"
+              tabIndex={activeTab === 'budget' ? 0 : -1}
               aria-selected={activeTab === 'budget'}
               aria-label="Dynamic Budget Estimator"
+              onKeyDown={(e) => handleTabKeyDown(e, 'budget')}
               onClick={() => setActiveTab('budget')}
               className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 ${
                 activeTab === 'budget'
@@ -175,8 +198,10 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               role="tab"
+              tabIndex={activeTab === 'timeline' ? 0 : -1}
               aria-selected={activeTab === 'timeline'}
               aria-label="Timeline and Day-of Schedule"
+              onKeyDown={(e) => handleTabKeyDown(e, 'timeline')}
               onClick={() => setActiveTab('timeline')}
               className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 ${
                 activeTab === 'timeline'
@@ -190,8 +215,10 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               role="tab"
+              tabIndex={activeTab === 'vendors' ? 0 : -1}
               aria-selected={activeTab === 'vendors'}
               aria-label="Vendor Checklist"
+              onKeyDown={(e) => handleTabKeyDown(e, 'vendors')}
               onClick={() => setActiveTab('vendors')}
               className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 ${
                 activeTab === 'vendors'
@@ -208,8 +235,10 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               role="tab"
+              tabIndex={activeTab === 'seating' ? 0 : -1}
               aria-selected={activeTab === 'seating'}
               aria-label="Floorplan and Seating"
+              onKeyDown={(e) => handleTabKeyDown(e, 'seating')}
               onClick={() => setActiveTab('seating')}
               className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 ${
                 activeTab === 'seating'
@@ -223,8 +252,10 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               role="tab"
+              tabIndex={activeTab === 'idealab' ? 0 : -1}
               aria-selected={activeTab === 'idealab'}
               aria-label="Personalized AI Idea Lab"
+              onKeyDown={(e) => handleTabKeyDown(e, 'idealab')}
               onClick={() => setActiveTab('idealab')}
               className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 ${
                 activeTab === 'idealab'
@@ -238,8 +269,10 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               role="tab"
+              tabIndex={activeTab === 'contingency' ? 0 : -1}
               aria-selected={activeTab === 'contingency'}
               aria-label="Plan B Weather and Failover"
+              onKeyDown={(e) => handleTabKeyDown(e, 'contingency')}
               onClick={() => setActiveTab('contingency')}
               className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 ${
                 activeTab === 'contingency'
@@ -253,8 +286,10 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               role="tab"
+              tabIndex={activeTab === 'sustainability' ? 0 : -1}
               aria-selected={activeTab === 'sustainability'}
               aria-label="ESG Carbon and Eco Assessment"
+              onKeyDown={(e) => handleTabKeyDown(e, 'sustainability')}
               onClick={() => setActiveTab('sustainability')}
               className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 ${
                 activeTab === 'sustainability'

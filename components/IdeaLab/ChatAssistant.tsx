@@ -118,8 +118,13 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
 
       {/* Input Box */}
       <form onSubmit={handleSend} className="flex items-center gap-2 pt-2 border-t border-slate-800">
+        <label htmlFor="chat-input" className="sr-only">
+          Message EventVerse AI Concierge
+        </label>
         <input
+          id="chat-input"
           type="text"
+          aria-label="Message EventVerse AI Concierge"
           placeholder="Ask for color tweaks, drink recipes, playlist genres, or vendor tips..."
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
@@ -132,6 +137,7 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
           size="sm"
           isLoading={isLoading}
           disabled={!inputText.trim()}
+          aria-label="Send message to AI Concierge"
           className="h-10 px-4"
         >
           <Send className="w-4 h-4" />

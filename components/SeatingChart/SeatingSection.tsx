@@ -6,29 +6,24 @@ import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
 import { Modal } from "../ui/Modal";
-import { EventVerseState } from "@/lib/types";
+import { EventVerseState, SeatingGuest, TableLayout } from "@/lib/types";
 
-interface Guest {
-  id: string;
-  name: string;
-  dietary: 'Regular' | 'Vegan' | 'Vegetarian' | 'Gluten-Free' | 'Halal' | 'Jain';
-  plusOne?: string;
-}
-
-interface TableLayout {
-  id: string;
-  number: number;
-  name: string;
-  capacity: number;
-  guests: Guest[];
-}
+type Guest = SeatingGuest;
 
 interface SeatingSectionProps {
   state?: EventVerseState;
+  tables?: TableLayout[];
+  onAddGuest?: (tableId: string, guest: { name: string; dietary: SeatingGuest['dietary'] }) => void;
+  onRemoveGuest?: (tableId: string, guestId: string) => void;
 }
 
-export const SeatingSection: React.FC<SeatingSectionProps> = ({ state }) => {
-  const [tables, setTables] = useState<TableLayout[]>([
+export const SeatingSection: React.FC<SeatingSectionProps> = ({ 
+  state,
+  tables: propsTables,
+  onAddGuest,
+  onRemoveGuest
+}) => {
+  const [localTables, setLocalTables] = useState<TableLayout[]>([
     {
       id: "tbl-1",
       number: 1,
@@ -78,10 +73,17 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({ state }) => {
     }
   ]);
 
+  // Use centralized state tables when provided, otherwise fall back to local state
+  const tables = (state?.tables && state.tables.length > 0) 
+    ? state.tables 
+    : (propsTables && propsTables.length > 0) 
+      ? propsTables 
+      : localTables;
+
   const [isAddGuestOpen, setIsAddGuestOpen] = useState(false);
-  const [selectedTableId, setSelectedTableId] = useState<string>(tables[0].id);
+  const [selectedTableId, setSelectedTableId] = useState<string>(tables[0]?.id || "tbl-1");
   const [newGuestName, setNewGuestName] = useState("");
-  const [newGuestDietary, setNewGuestDietary] = useState<Guest['dietary']>("Regular");
+  const [newGuestDietary, setNewGuestDietary] = useState<SeatingGuest['dietary']>("Regular");
 
   // Calculate dietary totals
   const allGuests = tables.flatMap((t) => t.guests);
@@ -94,32 +96,43 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({ state }) => {
     e.preventDefault();
     if (!newGuestName.trim()) return;
 
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.id !== selectedTableId) return t;
-        if (t.guests.length >= t.capacity) return t;
-        return {
-          ...t,
-          guests: [
-            ...t.guests,
-            {
-              id: `g-${Date.now()}`,
-              name: newGuestName.trim(),
-              dietary: newGuestDietary
-            }
-          ]
-        };
-      })
-    );
+    if (onAddGuest) {
+      onAddGuest(selectedTableId, {
+        name: newGuestName.trim(),
+        dietary: newGuestDietary
+      });
+    } else {
+      setLocalTables((prev) =>
+        prev.map((t) => {
+          if (t.id !== selectedTableId) return t;
+          if (t.guests.length >= t.capacity) return t;
+          return {
+            ...t,
+            guests: [
+              ...t.guests,
+              {
+                id: `g-${Date.now()}`,
+                name: newGuestName.trim(),
+                dietary: newGuestDietary
+              }
+            ]
+          };
+        })
+      );
+    }
 
     setNewGuestName("");
     setIsAddGuestOpen(false);
   };
 
   const handleRemoveGuest = (tableId: string, guestId: string) => {
-    setTables((prev) =>
-      prev.map((t) => (t.id === tableId ? { ...t, guests: t.guests.filter((g) => g.id !== guestId) } : t))
-    );
+    if (onRemoveGuest) {
+      onRemoveGuest(tableId, guestId);
+    } else {
+      setLocalTables((prev) =>
+        prev.map((t) => (t.id === tableId ? { ...t, guests: t.guests.filter((g) => g.id !== guestId) } : t))
+      );
+    }
   };
 
   const getDietaryBadge = (dietary: Guest['dietary']) => {

@@ -1,13 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateFullEventPlan, callGeminiAPI, EVENT_PLANNER_SYSTEM_PROMPT } from "@/lib/gemini";
 import { EventDetails } from "@/lib/types";
+import { validateAiRequestPayload } from "@/lib/utils";
+
+// In-Memory IP Rate Limiter (sliding window 60s, max 30 requests per minute per IP)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+function checkRateLimit(ip: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const windowMs = 60 * 1000;
+  const maxRequests = 30;
+
+  const current = rateLimitMap.get(ip);
+  if (!current || now > current.resetTime) {
+    rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
+    return { allowed: true, remaining: maxRequests - 1 };
+  }
+
+  if (current.count >= maxRequests) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  current.count += 1;
+  return { allowed: true, remaining: maxRequests - current.count };
+}
 
 export async function POST(req: NextRequest) {
   try {
-    // Basic body size/presence safety
+    // 1. IP-based Rate Limiting check
+    const forwarded = req.headers.get("x-forwarded-for");
+    const ip = (forwarded ? forwarded.split(",")[0] : req.headers.get("x-real-ip")) || "127.0.0.1";
+    const { allowed, remaining } = checkRateLimit(ip);
+
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please wait a minute before querying the AI engine again." },
+        { 
+          status: 429,
+          headers: {
+            "Retry-After": "60",
+            "X-RateLimit-Limit": "30",
+            "X-RateLimit-Remaining": "0"
+          }
+        }
+      );
+    }
+
+    // 2. Body parsing and strict schema validation
     const body = await req.json().catch(() => null);
-    if (!body || typeof body !== "object") {
-      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    const validation = validateAiRequestPayload(body);
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     const { action, event, message, chatHistory, apiKey } = body;
@@ -17,12 +60,10 @@ export async function POST(req: NextRequest) {
 
     // 1. Generate / Regenerate Full Event Plan
     if (action === "generate_plan") {
-      if (!event || typeof event !== "object") {
-        return NextResponse.json({ error: "Missing or malformed event details" }, { status: 400 });
-      }
-
       const planResult = await generateFullEventPlan(event as EventDetails, sanitizedApiKey);
-      return NextResponse.json(planResult);
+      return NextResponse.json(planResult, {
+        headers: { "X-RateLimit-Remaining": String(remaining) }
+      });
     }
 
     // 2. Chat Refine Assistant in Idea Lab

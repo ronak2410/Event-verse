@@ -1,61 +1,51 @@
 import { ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Currency, EventVerseState } from "./types";
+import {
+  formatCurrency as _formatCurrency,
+  generateId as _generateId,
+  normalizeAllocations as _normalizeAllocations,
+  getBenchmarkInsight as _getBenchmarkInsight,
+  calculateContingencyReserve as _calculateContingencyReserve,
+  classifyAudioEnergy as _classifyAudioEnergy,
+  calculateCarbonReduction as _calculateCarbonReduction,
+  getEsgCertification as _getEsgCertification,
+  tallyDietaryRequirements as _tallyDietaryRequirements,
+  isChronologicallyOrdered as _isChronologicallyOrdered,
+  calculateCommittedSpend as _calculateCommittedSpend,
+  calculateSafePerGuest as _calculateSafePerGuest,
+  calculateMilestoneProgress as _calculateMilestoneProgress,
+  calculateBudgetOverspend as _calculateBudgetOverspend,
+  sanitizeCsvCell as _sanitizeCsvCell,
+  isValidHexColor as _isValidHexColor,
+  validateAiRequestPayload as _validateAiRequestPayload
+} from "./businessLogic.mjs";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number, currency: Currency = 'USD'): string {
-  const symbols: Record<Currency, string> = {
-    USD: '$',
-    EUR: '€',
-    GBP: '£',
-    INR: '₹'
-  };
-
-  const symbol = symbols[currency] || '$';
-  return `${symbol}${amount.toLocaleString('en-US', {
-    maximumFractionDigits: 0,
-    minimumFractionDigits: 0
-  })}`;
-}
-
-export function generateId(prefix: string = 'ev'): string {
-  return `${prefix}-${Math.random().toString(36).substring(2, 9)}-${Date.now().toString(36)}`;
-}
+export const formatCurrency = _formatCurrency;
+export const generateId = _generateId;
+export const normalizeAllocations = _normalizeAllocations;
+export const getBenchmarkInsight = _getBenchmarkInsight;
+export const calculateContingencyReserve = _calculateContingencyReserve;
+export const classifyAudioEnergy = _classifyAudioEnergy;
+export const calculateCarbonReduction = _calculateCarbonReduction;
+export const getEsgCertification = _getEsgCertification;
+export const tallyDietaryRequirements = _tallyDietaryRequirements;
+export const isChronologicallyOrdered = _isChronologicallyOrdered;
+export const calculateCommittedSpend = _calculateCommittedSpend;
+export const calculateSafePerGuest = _calculateSafePerGuest;
+export const calculateMilestoneProgress = _calculateMilestoneProgress;
+export const calculateBudgetOverspend = _calculateBudgetOverspend;
+export const sanitizeCsvCell = _sanitizeCsvCell;
+export const isValidHexColor = _isValidHexColor;
+export const validateAiRequestPayload = _validateAiRequestPayload;
 
 export function calculatePerGuest(total: number, guestCount: number, currency: Currency = 'USD'): string {
   if (!guestCount || guestCount <= 0) return formatCurrency(0, currency);
   return `${formatCurrency(Math.round(total / guestCount), currency)} / guest`;
-}
-
-export function getBenchmarkInsight(eventType: string, guestCount: number, totalBudget: number): {
-  tier: 'Boutique / Budget-Savvy' | 'Standard Premium' | 'Luxury / High-End';
-  perGuest: number;
-  recommendation: string;
-} {
-  const perGuest = guestCount > 0 ? Math.round(totalBudget / guestCount) : 0;
-  
-  if (perGuest < 80) {
-    return {
-      tier: 'Boutique / Budget-Savvy',
-      perGuest,
-      recommendation: 'Focus budget on high-impact areas like memorable catering & playlist; DIY small decor elements to maximize charm without inflating cost.'
-    };
-  } else if (perGuest <= 250) {
-    return {
-      tier: 'Standard Premium',
-      perGuest,
-      recommendation: 'Well-balanced budget tier allowing professional live entertainment, full-service catering, and seasoned photography coverage.'
-    };
-  } else {
-    return {
-      tier: 'Luxury / High-End',
-      perGuest,
-      recommendation: 'Elevated tier accommodating bespoke floral installations, curated culinary stations, experiential lighting, and keepsake gifts.'
-    };
-  }
 }
 
 export function exportStateAsMarkdown(state: EventVerseState): string {
@@ -68,7 +58,7 @@ export function exportStateAsMarkdown(state: EventVerseState): string {
 
   md += `## 1. Budget Breakdown\n`;
   md += `| Category | Allocation % | Amount | Spent | Status |\n`;
-  md += `| :--- | :--- | :--- | :--- | :--- |\n`;
+  md += `| :--- | :--- | :--- | :--- |\n`;
   Object.values(budgetAllocations).forEach(cat => {
     md += `| ${cat.name} | ${cat.percentage}% | ${formatCurrency(cat.allocatedAmount, currency)} | ${formatCurrency(cat.spentAmount, currency)} | ${cat.spentAmount > cat.allocatedAmount ? '⚠️ Over' : '✅ Within'} |\n`;
   });
@@ -76,7 +66,7 @@ export function exportStateAsMarkdown(state: EventVerseState): string {
 
   md += `## 2. Day-of Run of Show\n`;
   md += `| Time | Schedule Milestone | Lead / Contact | Status |\n`;
-  md += `| :--- | :--- | :--- | :--- |\n`;
+  md += `| :--- | :--- | :--- |\n`;
   dayOfSchedule.forEach(item => {
     md += `| ${item.time} | ${item.title} (${item.notes || 'N/A'}) | ${item.leadPerson} | ${item.completed ? '[x] Done' : '[ ] Pending'} |\n`;
   });

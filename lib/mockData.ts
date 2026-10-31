@@ -444,7 +444,56 @@ export const TEMPLATE_WEDDING: EventVerseState = {
         timestamp: new Date().toISOString()
       }
     ]
-  }
+  },
+  tables: [
+    {
+      id: "tbl-1",
+      number: 1,
+      name: "VIP Head Table",
+      capacity: 8,
+      guests: [
+        { id: "g-1", name: "Amara & Julian (Couple)", dietary: "Regular" },
+        { id: "g-2", name: "Guest of Honor", dietary: "Gluten-Free" },
+        { id: "g-3", name: "Maid of Honor", dietary: "Vegan" },
+        { id: "g-4", name: "Best Man", dietary: "Regular" }
+      ]
+    },
+    {
+      id: "tbl-2",
+      number: 2,
+      name: "Family & Elders Circle",
+      capacity: 10,
+      guests: [
+        { id: "g-5", name: "Grandparents", dietary: "Vegetarian" },
+        { id: "g-6", name: "Aunt Maya", dietary: "Jain" },
+        { id: "g-7", name: "Uncle David", dietary: "Regular" },
+        { id: "g-8", name: "Cousin Nina", dietary: "Vegan" }
+      ]
+    },
+    {
+      id: "tbl-3",
+      number: 3,
+      name: "Tech Visionaries & Mentors",
+      capacity: 8,
+      guests: [
+        { id: "g-9", name: "Dr. Elena Vance", dietary: "Halal" },
+        { id: "g-10", name: "Lead Systems Architect", dietary: "Regular" },
+        { id: "g-11", name: "Design Director", dietary: "Gluten-Free" }
+      ]
+    },
+    {
+      id: "tbl-4",
+      number: 4,
+      name: "College Friends & Dancers",
+      capacity: 10,
+      guests: [
+        { id: "g-12", name: "Alex K.", dietary: "Regular" },
+        { id: "g-13", name: "Samira R.", dietary: "Vegetarian" },
+        { id: "g-14", name: "Marcus B.", dietary: "Regular" },
+        { id: "g-15", name: "Chloe T.", dietary: "Vegan" }
+      ]
+    }
+  ]
 };
 
 export const TEMPLATE_BIRTHDAY: EventVerseState = {

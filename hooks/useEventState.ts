@@ -30,10 +30,6 @@ export function useEventState() {
         const parsed = JSON.parse(saved);
         setState(parsed);
       }
-      const savedKey = localStorage.getItem("eventverse_gemini_key");
-      if (savedKey) {
-        setUserApiKey(savedKey);
-      }
     } catch (e) {
       console.error("Failed to load EventVerse state from localStorage:", e);
     } finally {
@@ -41,22 +37,24 @@ export function useEventState() {
     }
   }, []);
 
-  // Save to localStorage when state changes
+  // Save to localStorage when state changes (debounced by 600ms to eliminate I/O thrashing)
   useEffect(() => {
-    if (isHydrated) {
+    if (!isHydrated) return;
+
+    const timer = setTimeout(() => {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       } catch (e) {
         console.error("Failed to persist EventVerse state to localStorage:", e);
       }
-    }
+    }, 600);
+
+    return () => clearTimeout(timer);
   }, [state, isHydrated]);
 
+  // Keep API Key in React memory only to prevent XSS script access
   const saveApiKey = useCallback((key: string) => {
-    setUserApiKey(key);
-    try {
-      localStorage.setItem("eventverse_gemini_key", key);
-    } catch (e) {}
+    setUserApiKey(key.trim());
   }, []);
 
   // Load standard template
@@ -232,7 +230,7 @@ export function useEventState() {
         setState(prev => ({
           ...prev,
           event: targetEvent,
-          budgetAllocations: fallback.allocations as any,
+          budgetAllocations: fallback.allocations,
           milestones: fallback.milestones,
           dayOfSchedule: fallback.dayOfSchedule,
           vendors: fallback.vendors,
@@ -247,7 +245,7 @@ export function useEventState() {
       setState(prev => ({
         ...prev,
         event: targetEvent,
-        budgetAllocations: fallback.allocations as any,
+        budgetAllocations: fallback.allocations,
         milestones: fallback.milestones,
         dayOfSchedule: fallback.dayOfSchedule,
         vendors: fallback.vendors,
@@ -429,6 +427,51 @@ export function useEventState() {
     }
   }, [state.event, userApiKey]);
 
+  // Seating Chart Table & Guest Handlers
+  const addGuestToTable = useCallback((tableId: string, guest: { name: string; dietary: 'Regular' | 'Vegan' | 'Vegetarian' | 'Gluten-Free' | 'Halal' | 'Jain' }) => {
+    setState(prev => {
+      const currentTables = prev.tables || [];
+      const updatedTables = currentTables.map(t => {
+        if (t.id !== tableId) return t;
+        if (t.guests.length >= t.capacity) return t;
+        return {
+          ...t,
+          guests: [
+            ...t.guests,
+            {
+              id: `g-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+              name: guest.name.trim(),
+              dietary: guest.dietary
+            }
+          ]
+        };
+      });
+      return {
+        ...prev,
+        tables: updatedTables,
+        lastUpdated: new Date().toISOString()
+      };
+    });
+  }, []);
+
+  const removeGuestFromTable = useCallback((tableId: string, guestId: string) => {
+    setState(prev => {
+      const currentTables = prev.tables || [];
+      const updatedTables = currentTables.map(t => {
+        if (t.id !== tableId) return t;
+        return {
+          ...t,
+          guests: t.guests.filter(g => g.id !== guestId)
+        };
+      });
+      return {
+        ...prev,
+        tables: updatedTables,
+        lastUpdated: new Date().toISOString()
+      };
+    });
+  }, []);
+
   // Reset to default
   const resetToDefault = useCallback(() => {
     setState(TEMPLATE_WEDDING);
@@ -457,6 +500,8 @@ export function useEventState() {
     addVendor,
     updateVendor,
     deleteVendor,
+    addGuestToTable,
+    removeGuestFromTable,
     sendIdeaLabMessage,
     resetToDefault
   };
