@@ -268,6 +268,7 @@ export const ContingencyMatrixSection: React.FC<{ event: EventDetails }> = ({ ev
                   size="sm"
                   variant={risk.activated ? "destructive" : "outline"}
                   onClick={() => toggleActivate(risk.id)}
+                  aria-label={risk.activated ? `Deactivate protocol for ${risk.hazard}` : `Trigger failover protocol for ${risk.hazard}`}
                   className={`gap-1.5 text-xs w-full sm:w-auto ${
                     risk.activated
                       ? "bg-neon-pink text-slate-950 font-bold border-neon-pink shadow-neon-pink"

@@ -242,6 +242,7 @@ export const SustainabilitySection: React.FC<{ event: EventDetails }> = ({ event
                   size="sm"
                   variant={pillar.isImplemented ? "luxury" : "outline"}
                   onClick={() => togglePillar(pillar.id)}
+                  aria-label={pillar.isImplemented ? `Remove sustainability strategy: ${pillar.title}` : `Adopt sustainability strategy: ${pillar.title}`}
                   className={`gap-1.5 text-xs ${
                     pillar.isImplemented
                       ? "bg-gradient-to-r from-neon-emerald to-neon-cyan text-slate-950 font-bold"
