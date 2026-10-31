@@ -4,7 +4,7 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: "default" | "secondary" | "success" | "warning" | "purple" | "luxury" | "outline";
+  variant?: "default" | "secondary" | "success" | "warning" | "purple" | "luxury" | "outline" | "pink" | "cyan";
   size?: "sm" | "md";
 }
 
@@ -23,6 +23,8 @@ export const Badge: React.FC<BadgeProps> = ({
     success: "bg-emerald-950/60 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-500/20",
     warning: "bg-violet-950/60 text-violet-300 border-violet-500/40 shadow-sm shadow-violet-500/20",
     purple: "bg-purple-950/60 text-purple-300 border-purple-500/40 shadow-sm shadow-purple-500/20",
+    pink: "bg-pink-950/60 text-pink-300 border-pink-500/40 shadow-sm shadow-pink-500/20",
+    cyan: "bg-cyan-950/60 text-cyan-300 border-cyan-500/40 shadow-sm shadow-cyan-500/20",
     luxury: "bg-gradient-to-r from-cyan-500/15 via-sky-500/20 to-purple-500/20 text-cyan-300 border-cyan-400/50 shadow-sm shadow-cyan-500/20 font-semibold",
     outline: "border-slate-700 text-slate-300 bg-slate-900/40"
   };

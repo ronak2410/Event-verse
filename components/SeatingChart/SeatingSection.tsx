@@ -6,6 +6,7 @@ import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
 import { Modal } from "../ui/Modal";
+import { EventVerseState } from "@/lib/types";
 
 interface Guest {
   id: string;
@@ -22,7 +23,11 @@ interface TableLayout {
   guests: Guest[];
 }
 
-export const SeatingSection: React.FC = () => {
+interface SeatingSectionProps {
+  state?: EventVerseState;
+}
+
+export const SeatingSection: React.FC<SeatingSectionProps> = ({ state }) => {
   const [tables, setTables] = useState<TableLayout[]>([
     {
       id: "tbl-1",
