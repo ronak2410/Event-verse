@@ -96,3 +96,81 @@ test('Audio BPM energy levels match soundstage curation specifications', () => {
   assert.equal(classifyAudioEnergy(82), 'Calm & Elegant');
 });
 
+// Test 7: Carbon Abatement Math & Percentage Reduction
+function calculateCarbonReduction(baselineKg, optimizedKg) {
+  if (baselineKg <= 0) return 0;
+  const saved = baselineKg - optimizedKg;
+  return Math.round((saved / baselineKg) * 100);
+}
+
+test('Carbon abatement reduction percentage is calculated accurately', () => {
+  assert.equal(calculateCarbonReduction(2460, 565), 77); // 77% reduction
+  assert.equal(calculateCarbonReduction(520, 85), 84);   // 84% food waste reduction
+  assert.equal(calculateCarbonReduction(940, 290), 69);  // 69% transport cut
+});
+
+// Test 8: ESG Eco-Certification Level Grading Tier
+function getEsgCertification(percentReduced) {
+  if (percentReduced >= 60) return 'Level III Eco-Gold';
+  if (percentReduced >= 40) return 'Level II Eco-Silver';
+  return 'Level I Eco-Certified';
+}
+
+test('ESG Certification grading assigns proper honors based on abatement', () => {
+  assert.equal(getEsgCertification(77), 'Level III Eco-Gold');
+  assert.equal(getEsgCertification(52), 'Level II Eco-Silver');
+  assert.equal(getEsgCertification(25), 'Level I Eco-Certified');
+});
+
+// Test 9: Table Seating Dietary Breakdown Tally
+function tallyDietaryRequirements(guests) {
+  const counts = { Regular: 0, Vegan: 0, Vegetarian: 0, 'Gluten-Free': 0, Halal: 0, Jain: 0 };
+  guests.forEach(g => {
+    if (counts[g.dietary] !== undefined) {
+      counts[g.dietary]++;
+    }
+  });
+  return counts;
+}
+
+test('Table seating dietary requirement tally strictly matches kitchen counter requirements', () => {
+  const sampleGuests = [
+    { name: 'Aarav', dietary: 'Jain' },
+    { name: 'Diya', dietary: 'Vegan' },
+    { name: 'Kishan', dietary: 'Jain' },
+    { name: 'Elena', dietary: 'Gluten-Free' },
+    { name: 'Marcus', dietary: 'Regular' }
+  ];
+  const tallies = tallyDietaryRequirements(sampleGuests);
+  assert.equal(tallies.Jain, 2);
+  assert.equal(tallies.Vegan, 1);
+  assert.equal(tallies['Gluten-Free'], 1);
+  assert.equal(tallies.Regular, 1);
+  assert.equal(tallies.Halal, 0);
+});
+
+// Test 10: Run-of-Show Chronological Progression
+function isChronologicallyOrdered(times) {
+  const toMinutes = (timeStr) => {
+    const [time, period] = timeStr.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  };
+  const minutesList = times.map(toMinutes);
+  for (let i = 1; i < minutesList.length; i++) {
+    if (minutesList[i] < minutesList[i - 1]) return false;
+  }
+  return true;
+}
+
+test('Day-of run-of-show timeline progresses chronologically', () => {
+  const schedule = ['02:00 PM', '04:30 PM', '06:00 PM', '07:30 PM', '10:00 PM'];
+  assert.equal(isChronologicallyOrdered(schedule), true);
+
+  const brokenSchedule = ['02:00 PM', '01:00 PM'];
+  assert.equal(isChronologicallyOrdered(brokenSchedule), false);
+});
+
+
