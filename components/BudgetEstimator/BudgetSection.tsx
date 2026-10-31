@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Sparkles, DollarSign, Users, RefreshCw, Compass, ArrowRight, Lightbulb } from "lucide-react";
+import { Sparkles, DollarSign, Users, RefreshCw, Compass, ArrowRight, Lightbulb, Download } from "lucide-react";
 import { BudgetVisualizer } from "./BudgetVisualizer";
 import { BudgetSlider } from "./BudgetSlider";
 import { Button } from "../ui/Button";
@@ -49,6 +49,28 @@ export const BudgetSection: React.FC<BudgetSectionProps> = ({
     { id: 'memories', label: 'Documentary Focus', desc: '17% Photo & Cinema Video' },
   ];
 
+  const handleExportBudgetCSV = () => {
+    const headers = ["Category", "Allocation %", "Allocated Amount", "Spent Amount", "Remaining Buffer", "AI Suggested %", "Strategic Rationale"];
+    const rows = Object.values(budgetAllocations).map(cat => [
+      `"${cat.name}"`,
+      `${cat.percentage}%`,
+      cat.allocatedAmount,
+      cat.spentAmount,
+      cat.allocatedAmount - cat.spentAmount,
+      cat.aiSuggestedPercentage ? `${cat.aiSuggestedPercentage}%` : "N/A",
+      `"${(cat.rationale || '').replace(/"/g, '""')}"`
+    ]);
+    const summaryRow = ["TOTAL", "100%", event.totalBudget, Object.values(budgetAllocations).reduce((a, b) => a + b.spentAmount, 0), event.totalBudget - Object.values(budgetAllocations).reduce((a, b) => a + b.spentAmount, 0), "", ""];
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(",")), summaryRow.join(",")].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `${event.title.replace(/\s+/g, '_')}_Budget_Ledger.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner: Quick Budget Adjuster & AI Reallocation Strategy */}
@@ -75,8 +97,19 @@ export const BudgetSection: React.FC<BudgetSectionProps> = ({
           </div>
         </div>
 
-        {/* Quick Edit Budget Amount */}
+        {/* Quick Edit Budget Amount & Export CSV */}
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportBudgetCSV}
+            className="gap-1 text-xs border-neon-cyan/40 hover:border-neon-cyan text-neon-cyan"
+            title="Download CSV breakdown of all category allocations and spent amounts"
+          >
+            <Download className="w-3.5 h-3.5 text-neon-cyan" />
+            <span>Export CSV</span>
+          </Button>
+
           {editingBudget ? (
             <div className="flex items-center gap-2">
               <input

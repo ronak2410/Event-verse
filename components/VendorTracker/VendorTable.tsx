@@ -55,7 +55,7 @@ export const VendorTable: React.FC<VendorTableProps> = ({
       case "Contacted":
         return <Badge variant="secondary" size="sm">🔵 Contacted</Badge>;
       default:
-        return <Badge variant="warning" size="sm">🟡 Researching</Badge>;
+        return <Badge variant="cyan" size="sm">⚪ Researching</Badge>;
     }
   };
 

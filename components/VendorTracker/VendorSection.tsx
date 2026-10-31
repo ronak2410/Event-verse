@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Briefcase, Plus, CheckCircle2, DollarSign, Clock, ShieldCheck } from "lucide-react";
+import { Briefcase, Plus, CheckCircle2, DollarSign, Clock, ShieldCheck, Download } from "lucide-react";
 import { VendorTable } from "./VendorTable";
 import { AddVendorModal } from "./AddVendorModal";
 import { Button } from "../ui/Button";
@@ -35,37 +35,75 @@ export const VendorSection: React.FC<VendorSectionProps> = ({
   const bookedCount = state.vendors.filter((v) => v.status === "Booked").length;
   const researchingCount = state.vendors.filter((v) => v.status === "Researching" || v.status === "Contacted").length;
 
+  const handleExportCSV = () => {
+    const headers = ["Vendor Name", "Category", "Contact Person", "Email", "Phone", "Status", "Estimated Cost", "Actual Cost", "Contract Signed", "Deposit Paid", "Notes"];
+    const rows = state.vendors.map(v => [
+      `"${v.name}"`,
+      `"${v.category}"`,
+      `"${v.contactPerson || ''}"`,
+      `"${v.email || ''}"`,
+      `"${v.phone || ''}"`,
+      `"${v.status}"`,
+      v.estimatedCost,
+      v.actualCost || v.estimatedCost,
+      v.contractSigned ? "Yes" : "No",
+      v.depositPaid ? "Yes" : "No",
+      `"${(v.notes || '').replace(/"/g, '""')}"`
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `${state.event.title.replace(/\s+/g, '_')}_Vendor_Contacts.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-200/80 dark:border-emerald-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-200/80 dark:border-emerald-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 card-3d shadow-neon-emerald">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Badge variant="success" size="sm" className="gap-1">
               <Briefcase className="w-3 h-3" />
               Interactive Vendor CRM & Checklist
             </Badge>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
+            <span className="text-xs text-slate-400">
               Procurement & Contract Tracker
             </span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
             Vendor Directory & Status Dashboard
           </h2>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-            Committed Spend: <strong className="text-slate-900 dark:text-slate-100">{formatCurrency(totalCommitted, state.event.currency)}</strong> of {formatCurrency(state.event.totalBudget, state.event.currency)} • {state.vendors.length} Total Partners
+          <p className="text-xs text-slate-300 mt-0.5">
+            Committed Spend: <strong className="text-white">{formatCurrency(totalCommitted, state.event.currency)}</strong> of {formatCurrency(state.event.totalBudget, state.event.currency)} • {state.vendors.length} Total Partners
           </p>
         </div>
 
-        <Button
-          variant="luxury"
-          size="sm"
-          onClick={() => setIsAddModalOpen(true)}
-          className="gap-1.5 text-xs shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New Vendor</span>
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCSV}
+            className="gap-1.5 text-xs text-emerald-300 border-emerald-500/40 hover:border-emerald-400"
+            title="Download CSV spreadsheet of all vendor contacts and contract costs"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Export CSV</span>
+          </Button>
+
+          <Button
+            variant="luxury"
+            size="sm"
+            onClick={() => setIsAddModalOpen(true)}
+            className="gap-1.5 text-xs"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Vendor</span>
+          </Button>
+        </div>
       </div>
 
       {/* KPI Cards Strip */}
