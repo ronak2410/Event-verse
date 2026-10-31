@@ -127,9 +127,7 @@ export default function Home() {
 
         {/* Tab 5: Interactive 3D Seating Chart & Dietary Floorplan */}
         {activeTab === "seating" && (
-          <SeatingSection
-            state={state}
-          />
+          <SeatingSection />
         )}
       </main>
 
