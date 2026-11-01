@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Clock, Calendar, CheckSquare, Sparkles, Printer } from "lucide-react";
 import { MilestoneCountdown } from "./MilestoneCountdown";
 import { DayOfRunOfShow } from "./DayOfRunOfShow";
@@ -26,8 +26,15 @@ export const TimelineSection: React.FC<TimelineSectionProps> = ({
 }) => {
   const [subTab, setSubTab] = useState<'milestones' | 'runofshow' | 'stafflive'>('milestones');
 
-  const totalTasks = state.milestones.reduce((acc, m) => acc + m.tasks.length, 0);
-  const completedTasks = state.milestones.reduce((acc, m) => acc + m.tasks.filter((t) => t.completed).length, 0);
+  const { totalTasks, completedTasks } = useMemo(() => {
+    let total = 0;
+    let completed = 0;
+    state.milestones.forEach(m => {
+      total += m.tasks.length;
+      completed += m.tasks.filter(t => t.completed).length;
+    });
+    return { totalTasks: total, completedTasks: completed };
+  }, [state.milestones]);
 
   return (
     <div className="space-y-6">

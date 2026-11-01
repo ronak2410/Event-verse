@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Users, Plus, Utensils, ShieldCheck, Heart, Sparkles, Trash2 } from "lucide-react";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
@@ -84,21 +84,25 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
   const [selectedTableId, setSelectedTableId] = useState<string>(tables[0]?.id || "tbl-1");
   const [newGuestName, setNewGuestName] = useState("");
   const [newGuestDietary, setNewGuestDietary] = useState<SeatingGuest['dietary']>("Regular");
+  const [liveAnnouncement, setLiveAnnouncement] = useState("");
 
-  // Calculate dietary totals
-  const allGuests = tables.flatMap((t) => t.guests);
-  const dietaryCounts = allGuests.reduce((acc, g) => {
-    acc[g.dietary] = (acc[g.dietary] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  // Memoized guest and dietary calculations for optimal rendering efficiency
+  const allGuests = useMemo(() => tables.flatMap((t) => t.guests), [tables]);
+  const dietaryCounts = useMemo(() => {
+    return allGuests.reduce((acc, g) => {
+      acc[g.dietary] = (acc[g.dietary] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [allGuests]);
 
   const handleAddGuest = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGuestName.trim()) return;
 
+    const trimmedName = newGuestName.trim();
     if (onAddGuest) {
       onAddGuest(selectedTableId, {
-        name: newGuestName.trim(),
+        name: trimmedName,
         dietary: newGuestDietary
       });
     } else {
@@ -112,7 +116,7 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
               ...t.guests,
               {
                 id: `g-${Date.now()}`,
-                name: newGuestName.trim(),
+                name: trimmedName,
                 dietary: newGuestDietary
               }
             ]
@@ -121,6 +125,7 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
       );
     }
 
+    setLiveAnnouncement(`Guest ${trimmedName} added to seating layout.`);
     setNewGuestName("");
     setIsAddGuestOpen(false);
   };
@@ -133,6 +138,7 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
         prev.map((t) => (t.id === tableId ? { ...t, guests: t.guests.filter((g) => g.id !== guestId) } : t))
       );
     }
+    setLiveAnnouncement("Guest removed from table layout.");
   };
 
   const getDietaryBadge = (dietary: Guest['dietary']) => {
@@ -154,6 +160,11 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* ARIA Live Status Region for Screen Readers */}
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {liveAnnouncement}
+      </div>
+
       {/* Top Banner */}
       <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-transparent border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

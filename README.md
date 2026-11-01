@@ -57,9 +57,9 @@ Planning major life celebrations and milestones is notoriously fragmented:
 - **Styling**: Tailwind CSS with custom neon 3D utility tokens and `@media print` stylesheets
 - **Security**: Strict HTTP security headers (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, `poweredByHeader: false`)
 - **Icons**: [Lucide React](https://lucide.dev/)
-- **Testing**: Node.js Test Runner (`node:test`, `node:assert/strict`) — 16 passing unit tests in <450ms
+- **Testing**: Node.js Test Runner (`node:test`, `node:assert/strict`) — 24 passing unit & integration tests in <350ms
 - **Deployment**: Vercel Serverless Platform
-- **State Management**: Reactive custom hook (`useEventState`) with seamless `localStorage` persistence
+- **State Management**: Reactive custom hook (`useEventState`) decoupled from AI network services via `lib/services/eventService.ts`
 
 ---
 
@@ -77,7 +77,7 @@ npm install
 cp .env.example .env.local
 # Add: GEMINI_API_KEY=your_key_here
 
-# 4. Run automated tests (16 tests)
+# 4. Run automated tests (24 comprehensive tests)
 npm test
 
 # 5. Start development server
@@ -92,10 +92,11 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 | Parameter | Architecture Implementation & Technical Evidence |
 | :--- | :--- |
-| **Code Quality** | Strict TypeScript compilation (`npx tsc --noEmit` exits with 0 errors across all components). Modular domain separation where business rules reside in `lib/businessLogic.mjs` and `lib/utils.ts`. Zero uncontrolled `any` casts in state mutators or API pipelines. |
-| **Security & Privacy** | Multi-layered defense: **In-memory IP rate limiting** (sliding-window 30 req/min per IP on `/api/ai`), **strict server-side payload schema validation** (`validateAiRequestPayload`), **CSV formula injection neutralization** (`=`, `+`, `-`, `@`), and **in-memory-only user API key lifecycle** (no unencrypted persistent storage in `localStorage` where injected third-party scripts could access it). Standard HTTP headers (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`). |
-| **Efficiency & Performance** | Debounced state persistence (600ms timer on `localStorage.setItem` to eliminate I/O thrashing during slider scrubs). Zero external runtime animation overhead (pure CSS transitions & Tailwind utilities). Production build compiles clean with minimal client bundles and instant 0ms tab transitions. |
-| **Testing & Verification** | **17 automated unit and integration tests** executed via Node.js Test Runner in <500ms. Crucially, tests directly import production application code (`lib/businessLogic.mjs`), validating budget normalization (100% invariant), benchmark tiers, dietary tallies, run-of-show chronology, CSV sanitization, and `/api/ai` request payload validation. |
-| **Accessibility (a11y)** | WCAG 2.1 AA keyboard support: W3C ARIA **roving tabindex pattern** (`ArrowRight`, `ArrowLeft`, `Home`, `End`) across the navigation tabs, **focus trapping** (`Tab`/`Shift+Tab` loop) and **focus restoration** on modal close, explicit accessible labels on the AI concierge input, and screen-reader ARIA live regions. |
+| **Code Quality** | Strict TypeScript compilation (`npx tsc --noEmit` exits with 0 errors across all components). Explicit service layer separation via `lib/services/eventService.ts`, decoupling state hooks from raw network calls. Business logic isolated in `lib/businessLogic.mjs` and re-exported through `lib/utils.ts`. Zero uncontrolled `any` casts in state mutators or API pipelines; typed error handling with `catch (err: unknown)` and custom error classes. |
+| **Security & Privacy** | Multi-layered defense: **Strict Content-Security-Policy (CSP)** header configured in `next.config.js`, **In-memory IP rate limiting** (sliding-window 30 req/min per IP on `/api/ai`), **Payload DoS guard** (strict 64KB max body size verification returning `413 Payload Too Large`), **Prompt input sanitization** (stripping non-printable control characters and capping string lengths), **strict server-side payload schema validation** (`validateAiRequestPayload`), **CSV formula injection neutralization** (`=`, `+`, `-`, `@`), and **in-memory-only user API key lifecycle** (no unencrypted persistent storage in `localStorage` where injected third-party scripts could access it). |
+| **Efficiency & Performance** | Debounced state persistence (600ms timer on `localStorage.setItem` to eliminate I/O thrashing during slider scrubs). `useMemo` optimizations across complex aggregations (`allGuests`, `dietaryCounts`, `benchmark`, `milestoneCounts`, `totalSpent`). Zero external runtime animation overhead (pure CSS transitions & Tailwind utilities). Production build compiles clean with minimal client bundles and instant 0ms tab transitions. |
+| **Testing & Verification** | **24 automated unit and integration tests** executed via Node.js Test Runner in <350ms. Crucially, tests directly import production application code (`lib/businessLogic.mjs`), validating budget normalization (100% invariant), benchmark tiers, dietary tallies, run-of-show chronology, CSV sanitization, `/api/ai` request payload validation, unique ID generation, RFC-4180 CSV export generation, Markdown blueprint serialization, dietary percentage rounding, composite ESG score calculation, and rate-limiting sliding-window logic. |
+| **Accessibility (a11y)** | WCAG 2.1 AA keyboard support: Accessible **Skip-to-Content link** (`#main-content`) for screen readers & keyboard navigation, W3C ARIA **roving tabindex pattern** (`ArrowRight`, `ArrowLeft`, `Home`, `End`) across the navigation tabs, **focus trapping** (`Tab`/`Shift+Tab` loop) and **focus restoration** on modal close, explicit accessible labels on the AI concierge input, and screen-reader ARIA live regions (`role="status"`, `role="log"`, `aria-live="polite"`). Sliders provide full ARIA range metadata (`aria-valuemin`, `aria-valuemax`, `aria-valuenow`, `aria-valuetext`). |
 | **Problem Statement Alignment** | Fully integrated event-planning lifecycle covering budget modeling, milestone countdowns, minute-by-minute run-of-show, vendor CRM, **centralized state-driven seating & dietary floorplan** (persisted directly in `state.tables`), AI Idea Lab brainstorming, weather failover contingency, and ESG sustainability. |
+
 

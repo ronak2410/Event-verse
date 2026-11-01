@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Sparkles, DollarSign, Users, RefreshCw, Compass, ArrowRight, Lightbulb, Download } from "lucide-react";
 import { BudgetVisualizer } from "./BudgetVisualizer";
 import { BudgetSlider } from "./BudgetSlider";
@@ -8,7 +8,7 @@ import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { Badge } from "../ui/Badge";
 import { EventVerseState, BudgetCategoryKey, EventDetails } from "@/lib/types";
-import { formatCurrency, calculatePerGuest, getBenchmarkInsight } from "@/lib/utils";
+import { formatCurrency, calculatePerGuest, getBenchmarkInsight, generateBudgetCsv } from "@/lib/utils";
 
 interface BudgetSectionProps {
   state: EventVerseState;
@@ -39,7 +39,11 @@ export const BudgetSection: React.FC<BudgetSectionProps> = ({
     setEditingBudget(false);
   };
 
-  const benchmark = getBenchmarkInsight(event.type, event.guestCount, event.totalBudget);
+  // Memoized planning benchmark to avoid re-running tier analysis on unrelated renders
+  const benchmark = useMemo(
+    () => getBenchmarkInsight(event.type, event.guestCount, event.totalBudget),
+    [event.type, event.guestCount, event.totalBudget]
+  );
 
   const priorities: Array<{ id: EventDetails['priorityFocus']; label: string; desc: string }> = [
     { id: 'balanced', label: 'AI Balanced', desc: 'Standard industry benchmarks' },
@@ -50,18 +54,7 @@ export const BudgetSection: React.FC<BudgetSectionProps> = ({
   ];
 
   const handleExportBudgetCSV = () => {
-    const headers = ["Category", "Allocation %", "Allocated Amount", "Spent Amount", "Remaining Buffer", "AI Suggested %", "Strategic Rationale"];
-    const rows = Object.values(budgetAllocations).map(cat => [
-      `"${cat.name}"`,
-      `${cat.percentage}%`,
-      cat.allocatedAmount,
-      cat.spentAmount,
-      cat.allocatedAmount - cat.spentAmount,
-      cat.aiSuggestedPercentage ? `${cat.aiSuggestedPercentage}%` : "N/A",
-      `"${(cat.rationale || '').replace(/"/g, '""')}"`
-    ]);
-    const summaryRow = ["TOTAL", "100%", event.totalBudget, Object.values(budgetAllocations).reduce((a, b) => a + b.spentAmount, 0), event.totalBudget - Object.values(budgetAllocations).reduce((a, b) => a + b.spentAmount, 0), "", ""];
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(",")), summaryRow.join(",")].join("\n");
+    const csvContent = "data:text/csv;charset=utf-8," + generateBudgetCsv(budgetAllocations, event.totalBudget, event.currency);
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);

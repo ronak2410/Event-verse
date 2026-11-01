@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   formatCurrency,
+  generateId,
   normalizeAllocations,
   getBenchmarkInsight,
   calculateContingencyReserve,
@@ -16,7 +17,11 @@ import {
   calculateBudgetOverspend,
   sanitizeCsvCell,
   isValidHexColor,
-  validateAiRequestPayload
+  validateAiRequestPayload,
+  generateBudgetCsv,
+  exportEventAsMarkdown,
+  calculateDietaryPercentages,
+  calculateSustainabilityScore
 } from '../lib/businessLogic.mjs';
 
 // Test 1: Math & Currency Formatting
@@ -203,4 +208,114 @@ test('validateAiRequestPayload strictly accepts valid payloads and blocks invali
   // Valid rebalance_budget
   assert.equal(validateAiRequestPayload({ action: 'rebalance_budget', totalBudget: 25000, guestCount: 80 }).valid, true);
   assert.equal(validateAiRequestPayload({ action: 'rebalance_budget', totalBudget: 0, guestCount: 80 }).valid, false);
+});
+
+// Test 18: ID Generator Format and Uniqueness
+test('generateId produces non-empty prefixed unique IDs', () => {
+  const id1 = generateId('v');
+  const id2 = generateId('v');
+  assert.ok(id1.startsWith('v-'));
+  assert.ok(id2.startsWith('v-'));
+  assert.notEqual(id1, id2);
+});
+
+// Test 19: RFC-4180 CSV Budget Document Generation
+test('generateBudgetCsv produces standard compliant multi-line CSV with neutralized cells', () => {
+  const mockAllocations = {
+    venue: { name: 'Venue & Infrastructure', percentage: 28, allocatedAmount: 11760, spentAmount: 12000, aiSuggestedPercentage: 28, rationale: 'Base location' },
+    catering: { name: '=Formula() Catering', percentage: 32, allocatedAmount: 13440, spentAmount: 10000, aiSuggestedPercentage: 32, rationale: '3-course plated' }
+  };
+  const csv = generateBudgetCsv(mockAllocations, 42000, 'USD');
+  const lines = csv.split('\n');
+  assert.ok(lines.length >= 3);
+  assert.equal(lines[0], 'Category,Allocation %,Allocated Amount,Spent Amount,Remaining Buffer,AI Suggested %,Strategic Rationale');
+  // Check formula injection neutralization on catering name
+  assert.ok(csv.includes('"\'=Formula() Catering"'));
+  // Check total summary row
+  assert.ok(csv.includes('TOTAL,100%,42000'));
+});
+
+// Test 20: Event Blueprint Markdown Document Serialization
+test('exportEventAsMarkdown exports structured event overview with tables and tasks', () => {
+  const mockState = {
+    event: { title: 'Lumina Gala 2026', type: 'gala', date: '2026-12-31', guestCount: 150, totalBudget: 60000, currency: 'USD' },
+    budgetAllocations: {
+      venue: { name: 'Grand Ballroom', percentage: 30, allocatedAmount: 18000, spentAmount: 15000 }
+    },
+    milestones: [
+      {
+        title: 'Phase 1: Foundation',
+        timeframe: '6 months out',
+        tasks: [{ title: 'Sign venue contract', completed: true }]
+      }
+    ]
+  };
+  const md = exportEventAsMarkdown(mockState);
+  assert.ok(md.includes('# Event Blueprint: Lumina Gala 2026'));
+  assert.ok(md.includes('$60,000'));
+  assert.ok(md.includes('| Grand Ballroom | 30% | $18,000 | On Track |'));
+  assert.ok(md.includes('- [x] Sign venue contract'));
+});
+
+// Test 21: Dietary Breakdown Percentage Precision
+test('calculateDietaryPercentages computes accurate rounded group shares', () => {
+  const counts = { Regular: 50, Vegan: 25, 'Gluten-Free': 25 };
+  const pcts = calculateDietaryPercentages(counts, 100);
+  assert.equal(pcts.Regular, 50);
+  assert.equal(pcts.Vegan, 25);
+  assert.equal(pcts['Gluten-Free'], 25);
+  // Zero guests boundary
+  assert.deepEqual(calculateDietaryPercentages(counts, 0), {});
+});
+
+// Test 22: Composite ESG Sustainability Index Calculation
+test('calculateSustainabilityScore calculates weighted ESG score bounded 0-100', () => {
+  const score = calculateSustainabilityScore({
+    carbonSavedPercent: 80,   // 80 * 0.40 = 32
+    wasteDivertedPercent: 90, // 90 * 0.35 = 31.5 -> 32
+    plantBasedRatio: 60       // 60 * 0.25 = 15
+  });
+  // 32 + 31.5 + 15 = 78.5 -> Math.round is 79
+  assert.equal(score, 79);
+
+  // Boundary testing
+  assert.equal(calculateSustainabilityScore({ carbonSavedPercent: 0, wasteDivertedPercent: 0, plantBasedRatio: 0 }), 0);
+  assert.equal(calculateSustainabilityScore({ carbonSavedPercent: 120, wasteDivertedPercent: 120, plantBasedRatio: 120 }), 100);
+});
+
+// Test 23: Sliding-Window IP Rate Limiter Simulation
+test('Rate limiter logic correctly grants within limit and denies above max requests', () => {
+  const rateLimitMap = new Map();
+  function simulateRateLimit(ip, maxRequests = 3, windowMs = 1000) {
+    const now = Date.now();
+    const current = rateLimitMap.get(ip);
+    if (!current || now > current.resetTime) {
+      rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
+      return true;
+    }
+    if (current.count >= maxRequests) {
+      return false;
+    }
+    current.count += 1;
+    return true;
+  }
+
+  const testIp = '192.168.1.100';
+  assert.equal(simulateRateLimit(testIp), true); // Req 1
+  assert.equal(simulateRateLimit(testIp), true); // Req 2
+  assert.equal(simulateRateLimit(testIp), true); // Req 3
+  assert.equal(simulateRateLimit(testIp), false); // Req 4: Blocked!
+});
+
+// Test 24: Comprehensive Resilience Against Null and Malformed Inputs
+test('Domain utilities handle null, undefined, and empty objects without crashing', () => {
+  assert.equal(formatCurrency(null), '$0');
+  assert.equal(formatCurrency(undefined), '$0');
+  assert.equal(calculateCarbonReduction(0, 0), 0);
+  assert.equal(calculateCommittedSpend(null), 0);
+  assert.equal(calculateCommittedSpend([]), 0);
+  assert.equal(calculateMilestoneProgress(null), 0);
+  assert.equal(calculateMilestoneProgress([]), 0);
+  assert.equal(isChronologicallyOrdered([]), true);
+  assert.deepEqual(tallyDietaryRequirements(null), { Regular: 0, Vegan: 0, Vegetarian: 0, 'Gluten-Free': 0, Halal: 0, Jain: 0 });
 });

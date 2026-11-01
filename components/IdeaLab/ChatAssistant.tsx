@@ -57,8 +57,14 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
         </div>
       </div>
 
-      {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto py-4 space-y-3.5 pr-1">
+      {/* Messages Scroll Area with ARIA live notifications */}
+      <div
+        role="log"
+        aria-live="polite"
+        aria-atomic="false"
+        aria-label="AI Concierge conversation history"
+        className="flex-1 overflow-y-auto py-4 space-y-3.5 pr-1"
+      >
         {messages.map((msg) => {
           const isUser = msg.role === "user";
           return (

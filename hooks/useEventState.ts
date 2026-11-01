@@ -12,6 +12,7 @@ import {
 } from "@/lib/types";
 import { TEMPLATE_WEDDING, TEMPLATE_BIRTHDAY, TEMPLATE_CORPORATE, TEMPLATE_ROYAL_SANGEET, buildCategoryAllocations } from "@/lib/mockData";
 import { generateDeterministicSmartPlan } from "@/lib/gemini";
+import { requestGeneratePlan, requestRebalanceBudget, requestChatRefine } from "@/lib/services/eventService";
 
 const STORAGE_KEY = "eventverse_state_v1";
 
@@ -143,52 +144,44 @@ export function useEventState() {
     });
   }, []);
 
-  // AI Reallocate Budget
+  // AI Reallocate Budget via dedicated event service
   const applyAIRebalance = useCallback(async (priorityFocus: EventDetails['priorityFocus']) => {
     setIsAiLoading(true);
     try {
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "rebalance_budget",
-          priorityFocus,
-          totalBudget: state.event.totalBudget,
-          guestCount: state.event.guestCount,
-          eventType: state.event.type,
-          apiKey: userApiKey
-        })
+      const data = await requestRebalanceBudget(
+        priorityFocus,
+        state.event.totalBudget,
+        state.event.guestCount,
+        state.event.type,
+        userApiKey
+      );
+
+      setState(prev => {
+        const newAllocations = { ...prev.budgetAllocations };
+        if (data.allocations) {
+          Object.keys(data.allocations).forEach(k => {
+            const key = k as BudgetCategoryKey;
+            if (newAllocations[key]) {
+              const newPct = data.allocations[key].percentage;
+              newAllocations[key] = {
+                ...newAllocations[key],
+                percentage: newPct,
+                allocatedAmount: Math.round((prev.event.totalBudget * newPct) / 100),
+                rationale: data.allocations[key].rationale || newAllocations[key].rationale,
+                aiSuggestedPercentage: newPct
+              };
+            }
+          });
+        }
+
+        return {
+          ...prev,
+          event: { ...prev.event, priorityFocus },
+          budgetAllocations: newAllocations,
+          aiMode: data.aiMode || prev.aiMode,
+          lastUpdated: new Date().toISOString()
+        };
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        setState(prev => {
-          const newAllocations = { ...prev.budgetAllocations };
-          if (data.allocations) {
-            Object.keys(data.allocations).forEach(k => {
-              const key = k as BudgetCategoryKey;
-              if (newAllocations[key]) {
-                const newPct = data.allocations[key].percentage;
-                newAllocations[key] = {
-                  ...newAllocations[key],
-                  percentage: newPct,
-                  allocatedAmount: Math.round((prev.event.totalBudget * newPct) / 100),
-                  rationale: data.allocations[key].rationale || newAllocations[key].rationale,
-                  aiSuggestedPercentage: newPct
-                };
-              }
-            });
-          }
-
-          return {
-            ...prev,
-            event: { ...prev.event, priorityFocus },
-            budgetAllocations: newAllocations,
-            aiMode: data.aiMode || prev.aiMode,
-            lastUpdated: new Date().toISOString()
-          };
-        });
-      }
     } catch (e) {
       console.error("AI Rebalance error:", e);
     } finally {
@@ -196,49 +189,23 @@ export function useEventState() {
     }
   }, [state.event, userApiKey]);
 
-  // Regenerate Complete Event Blueprint with AI
+  // Regenerate Complete Event Blueprint with AI via dedicated event service
   const regenerateEventWithAI = useCallback(async (customEvent?: EventDetails) => {
     setIsAiLoading(true);
     const targetEvent = customEvent || state.event;
     try {
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "generate_plan",
-          event: targetEvent,
-          apiKey: userApiKey
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setState(prev => ({
-          ...prev,
-          event: targetEvent,
-          budgetAllocations: data.allocations,
-          milestones: data.milestones,
-          dayOfSchedule: data.dayOfSchedule,
-          vendors: data.vendors,
-          ideaLab: data.ideaLab,
-          aiMode: data.aiMode || 'mock',
-          lastUpdated: new Date().toISOString()
-        }));
-      } else {
-        // Fallback local smart plan
-        const fallback = generateDeterministicSmartPlan(targetEvent);
-        setState(prev => ({
-          ...prev,
-          event: targetEvent,
-          budgetAllocations: fallback.allocations,
-          milestones: fallback.milestones,
-          dayOfSchedule: fallback.dayOfSchedule,
-          vendors: fallback.vendors,
-          ideaLab: fallback.ideaLab,
-          aiMode: 'mock',
-          lastUpdated: new Date().toISOString()
-        }));
-      }
+      const data = await requestGeneratePlan(targetEvent, userApiKey);
+      setState(prev => ({
+        ...prev,
+        event: targetEvent,
+        budgetAllocations: data.allocations,
+        milestones: data.milestones,
+        dayOfSchedule: data.dayOfSchedule,
+        vendors: data.vendors,
+        ideaLab: data.ideaLab,
+        aiMode: data.aiMode || 'mock',
+        lastUpdated: new Date().toISOString()
+      }));
     } catch (e) {
       console.warn("Generating with local deterministic engine:", e);
       const fallback = generateDeterministicSmartPlan(targetEvent);
@@ -369,7 +336,7 @@ export function useEventState() {
     }));
   }, []);
 
-  // Idea Lab: send chat message
+  // Idea Lab: send chat message via dedicated event service
   const sendIdeaLabMessage = useCallback(async (userMessageText: string) => {
     if (!userMessageText.trim()) return;
 
@@ -391,41 +358,34 @@ export function useEventState() {
 
     setIsAiLoading(true);
     try {
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "chat_refine",
-          message: userMessageText,
-          event: state.event,
-          apiKey: userApiKey
-        })
-      });
+      const data = await requestChatRefine(
+        userMessageText,
+        state.event,
+        state.ideaLab.customChatHistory.map(m => ({ role: m.role, content: m.content })),
+        userApiKey
+      );
 
-      if (res.ok) {
-        const data = await res.json();
-        const assistantMsg = {
-          id: `ai-${Date.now()}`,
-          role: 'assistant' as const,
-          content: data.reply || "I've noted that! What else would you like to explore?",
-          timestamp: new Date().toISOString()
-        };
+      const assistantMsg = {
+        id: `ai-${Date.now()}`,
+        role: 'assistant' as const,
+        content: data.reply || "I've noted that! What else would you like to explore?",
+        timestamp: new Date().toISOString()
+      };
 
-        setState(prev => ({
-          ...prev,
-          ideaLab: {
-            ...prev.ideaLab,
-            customChatHistory: [...prev.ideaLab.customChatHistory, assistantMsg]
-          },
-          aiMode: data.aiMode || prev.aiMode
-        }));
-      }
+      setState(prev => ({
+        ...prev,
+        ideaLab: {
+          ...prev.ideaLab,
+          customChatHistory: [...prev.ideaLab.customChatHistory, assistantMsg]
+        },
+        aiMode: data.aiMode || prev.aiMode
+      }));
     } catch (e) {
       console.error("Chat error:", e);
     } finally {
       setIsAiLoading(false);
     }
-  }, [state.event, userApiKey]);
+  }, [state.event, state.ideaLab.customChatHistory, userApiKey]);
 
   // Seating Chart Table & Guest Handlers
   const addGuestToTable = useCallback((tableId: string, guest: { name: string; dietary: 'Regular' | 'Vegan' | 'Vegetarian' | 'Gluten-Free' | 'Halal' | 'Jain' }) => {

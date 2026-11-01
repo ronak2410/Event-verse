@@ -18,7 +18,10 @@ import {
   calculateBudgetOverspend as _calculateBudgetOverspend,
   sanitizeCsvCell as _sanitizeCsvCell,
   isValidHexColor as _isValidHexColor,
-  validateAiRequestPayload as _validateAiRequestPayload
+  validateAiRequestPayload as _validateAiRequestPayload,
+  generateBudgetCsv as _generateBudgetCsv,
+  calculateDietaryPercentages as _calculateDietaryPercentages,
+  calculateSustainabilityScore as _calculateSustainabilityScore
 } from "./businessLogic.mjs";
 
 export function cn(...inputs: ClassValue[]) {
@@ -42,6 +45,9 @@ export const calculateBudgetOverspend = _calculateBudgetOverspend;
 export const sanitizeCsvCell = _sanitizeCsvCell;
 export const isValidHexColor = _isValidHexColor;
 export const validateAiRequestPayload = _validateAiRequestPayload;
+export const generateBudgetCsv = _generateBudgetCsv;
+export const calculateDietaryPercentages = _calculateDietaryPercentages;
+export const calculateSustainabilityScore = _calculateSustainabilityScore;
 
 export function calculatePerGuest(total: number, guestCount: number, currency: Currency = 'USD'): string {
   if (!guestCount || guestCount <= 0) return formatCurrency(0, currency);
