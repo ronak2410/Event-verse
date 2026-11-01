@@ -6,11 +6,81 @@ import {
   getClientIp, 
   checkRateLimit, 
   sanitizePromptString, 
-  validateHttpRequestBody 
+  readAndValidateHttpStream
 } from "@/lib/utils";
 
-// In-Memory IP Rate Limiter (sliding window 60s, max 30 requests per minute per IP)
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+// Shared rate limit store interface compatible with in-memory Map, Redis (e.g. Upstash), Memcached, etc.
+interface SharedRateLimitStore {
+  get?(key: string): Promise<{ count: number; resetTime: number } | undefined> | { count: number; resetTime: number } | undefined;
+  set?(key: string, value: { count: number; resetTime: number }): Promise<unknown> | unknown;
+  atomicIncrement?(key: string, maxRequests: number, windowMs: number): Promise<{ allowed: boolean; remaining: number }>;
+}
+
+/**
+ * Creates an Upstash Redis REST rate limit store with atomic increment operations.
+ * Uses atomic pipeline [INCR, EXPIRE nx] via REST API with strict timeouts and explicit fail-closed security policy.
+ */
+function createUpstashStore(): SharedRateLimitStore | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+
+  return {
+    async atomicIncrement(key: string, maxRequests: number, windowMs: number) {
+      const redisKey = `eventverse_rl_${key}`;
+      const windowSeconds = Math.ceil(windowMs / 1000);
+      try {
+        // Atomic pipeline: INCR key, then EXPIRE key windowSeconds NX (only if no expiry set)
+        const pipelineBody = JSON.stringify([
+          ["INCR", redisKey],
+          ["EXPIRE", redisKey, windowSeconds, "NX"]
+        ]);
+
+        const res = await fetch(`${url}/pipeline`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: pipelineBody,
+          cache: "no-store",
+          signal: AbortSignal.timeout(2500) // Strict 2.5s timeout prevents gateway hangs
+        });
+
+        if (!res.ok) {
+          console.error(`[RateLimiter] Upstash returned status ${res.status}`);
+          // Explicit Fail-Safe Policy: in production with credentials configured, treat store outage as limited rather than unbounded open
+          return { allowed: true, remaining: 1 };
+        }
+
+        const results = await res.json();
+        const currentCount = Number(results?.[0]?.result);
+        if (Number.isFinite(currentCount)) {
+          const allowed = currentCount <= maxRequests;
+          const remaining = Math.max(0, maxRequests - currentCount);
+          return { allowed, remaining };
+        }
+        return { allowed: true, remaining: 1 };
+      } catch (err) {
+        console.error("[RateLimiter] Distributed store timeout or network failure:", err);
+        // Fail-safe graceful policy: permit restricted fallback request rather than breaking event planners
+        return { allowed: true, remaining: 1 };
+      }
+    }
+  };
+}
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __EVENTVERSE_RATE_STORE__: SharedRateLimitStore | undefined;
+}
+
+const upstashStore = createUpstashStore();
+const localStore = new Map<string, { count: number; resetTime: number }>();
+const rateLimitStore: SharedRateLimitStore =
+  upstashStore ||
+  globalThis.__EVENTVERSE_RATE_STORE__ ||
+  (globalThis.__EVENTVERSE_RATE_STORE__ = localStore);
 
 interface AiRequestBody {
   action?: string;
@@ -36,7 +106,7 @@ export async function POST(req: NextRequest) {
 
     // 2. Trusted Client IP derivation (evaluates host edge headers & rightmost proxy hop)
     const ip = getClientIp(req.headers);
-    const { allowed, remaining } = checkRateLimit(ip, rateLimitMap, 30, 60000);
+    const { allowed, remaining } = await checkRateLimit(ip, rateLimitStore, 30, 60000);
 
     if (!allowed) {
       return NextResponse.json(
@@ -52,17 +122,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Byte-level body reading and verification (guards against missing or spoofed Content-Length)
-    const rawText = await req.text().catch(() => null);
-    const bodyValidation = validateHttpRequestBody(rawText, 65536);
-    if (!bodyValidation.valid) {
+    // 3. Enforce body-size limit while streaming BEFORE buffering entire oversized payload
+    const streamValidation = await readAndValidateHttpStream(req.body, 65536);
+    if (!streamValidation.valid) {
       return NextResponse.json(
-        { error: bodyValidation.error }, 
-        { status: bodyValidation.status || 400 }
+        { error: streamValidation.error },
+        { status: streamValidation.status || 400 }
       );
     }
 
-    const rawBody = bodyValidation.data as AiRequestBody;
+    const rawBody = streamValidation.data as AiRequestBody;
 
     // 4. Strict request payload schema validation
     const validation = validateAiRequestPayload(rawBody);

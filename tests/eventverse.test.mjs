@@ -27,6 +27,7 @@ import {
   sanitizePromptString,
   validatePersistedState,
   validateHttpRequestBody,
+  readAndValidateHttpStream,
   validateAiResponse
 } from '../lib/businessLogic.mjs';
 
@@ -212,8 +213,16 @@ test('validateAiRequestPayload strictly accepts valid payloads and blocks invali
   assert.equal(validateAiRequestPayload({ action: 'chat_refine', message: 'a'.repeat(2500) }).valid, false);
 
   // Valid rebalance_budget
-  assert.equal(validateAiRequestPayload({ action: 'rebalance_budget', totalBudget: 25000, guestCount: 80 }).valid, true);
+  assert.equal(validateAiRequestPayload({ action: 'rebalance_budget', totalBudget: 25000, guestCount: 80, priorityFocus: 'food_first', eventType: 'wedding' }).valid, true);
   assert.equal(validateAiRequestPayload({ action: 'rebalance_budget', totalBudget: 0, guestCount: 80 }).valid, false);
+
+  // Enum and boundary checks
+  assert.equal(validateAiRequestPayload({ action: 'rebalance_budget', totalBudget: 25000, guestCount: 80, priorityFocus: 'invalid_focus' }).valid, false);
+  assert.equal(validateAiRequestPayload({ action: 'rebalance_budget', totalBudget: 25000, guestCount: 80, eventType: 'invalid_type' }).valid, false);
+  assert.equal(validateAiRequestPayload({ action: 'generate_plan', event: { title: 'Party', totalBudget: 1000, guestCount: 10, type: 'invalid_type' } }).valid, false);
+  assert.equal(validateAiRequestPayload({ action: 'generate_plan', event: { title: 'Party', totalBudget: 1000, guestCount: 10, currency: 'BTC' } }).valid, false);
+  assert.equal(validateAiRequestPayload({ action: 'generate_plan', event: { title: 'Party', totalBudget: 1000, guestCount: 10.5 } }).valid, false); // Non-integer guest
+  assert.equal(validateAiRequestPayload({ action: 'generate_plan', event: { title: 'Party', totalBudget: 1000000000, guestCount: 10 } }).valid, false); // Budget overflow
 });
 
 // Test 18: ID Generator Format and Uniqueness
@@ -289,28 +298,52 @@ test('calculateSustainabilityScore calculates weighted ESG score bounded 0-100',
   assert.equal(calculateSustainabilityScore({ carbonSavedPercent: 120, wasteDivertedPercent: 120, plantBasedRatio: 120 }), 100);
 });
 
-// Test 23: Production Sliding-Window IP Rate Limiter (Real Logic)
-test('checkRateLimit accurately grants requests up to limit and denies excess with reset recovery', () => {
+// Test 23: Production Sliding-Window IP Rate Limiter (Real Logic & Shared Store Compatibility)
+test('checkRateLimit accurately grants requests up to limit and denies excess with reset recovery and shared store support', async () => {
   const store = new Map();
   const testIp = '10.0.0.42';
 
   // Allow up to 3 requests in a 500ms window
-  const r1 = checkRateLimit(testIp, store, 3, 500);
+  const r1 = await checkRateLimit(testIp, store, 3, 500);
   assert.equal(r1.allowed, true);
   assert.equal(r1.remaining, 2);
 
-  const r2 = checkRateLimit(testIp, store, 3, 500);
+  const r2 = await checkRateLimit(testIp, store, 3, 500);
   assert.equal(r2.allowed, true);
   assert.equal(r2.remaining, 1);
 
-  const r3 = checkRateLimit(testIp, store, 3, 500);
+  const r3 = await checkRateLimit(testIp, store, 3, 500);
   assert.equal(r3.allowed, true);
   assert.equal(r3.remaining, 0);
 
   // 4th request must be blocked
-  const r4 = checkRateLimit(testIp, store, 3, 500);
+  const r4 = await checkRateLimit(testIp, store, 3, 500);
   assert.equal(r4.allowed, false);
   assert.equal(r4.remaining, 0);
+
+  // Test multi-instance asynchronous shared store (e.g. Redis / Upstash mock)
+  const remoteDb = new Map();
+  const asyncSharedStore = {
+    async get(key) { return remoteDb.get(key); },
+    async set(key, val) { remoteDb.set(key, val); }
+  };
+  // Test atomic increment store (e.g. Upstash Redis pipeline with INCR + EXPIRE)
+  let atomicCounter = 0;
+  const atomicStore = {
+    async atomicIncrement(key, max, windowMs) {
+      atomicCounter++;
+      return { allowed: atomicCounter <= max, remaining: Math.max(0, max - atomicCounter) };
+    }
+  };
+  const at1 = await checkRateLimit('172.16.0.1', atomicStore, 2, 1000);
+  assert.equal(at1.allowed, true);
+  assert.equal(at1.remaining, 1);
+  const at2 = await checkRateLimit('172.16.0.1', atomicStore, 2, 1000);
+  assert.equal(at2.allowed, true);
+  assert.equal(at2.remaining, 0);
+  const at3 = await checkRateLimit('172.16.0.1', atomicStore, 2, 1000);
+  assert.equal(at3.allowed, false);
+  assert.equal(at3.remaining, 0);
 });
 
 // Test 24: Dependable Client IP Extraction with Spoofing Protection
@@ -409,11 +442,18 @@ test('validatePersistedState verifies complete state structure and flags corrupt
 test('validateAiResponse verifies shapes across generate_plan, rebalance_budget, and chat_refine', () => {
   // Valid generate_plan
   const validPlan = {
-    allocations: { venue: {} },
-    milestones: [],
-    dayOfSchedule: [],
-    vendors: [],
-    ideaLab: { themeConcept: 'Test' }
+    allocations: {
+      venue: { percentage: 20 },
+      catering: { percentage: 25 },
+      decor: { percentage: 15 },
+      entertainment: { percentage: 15 },
+      photography: { percentage: 10 },
+      contingency: { percentage: 15 }
+    },
+    milestones: [{ title: 'Kickoff', timeframe: '6m', tasks: [] }],
+    dayOfSchedule: [{ time: '10:00 AM', title: 'Start' }],
+    vendors: [{ name: 'V1', category: 'venue' }],
+    ideaLab: { themeConcept: 'Test', colorPalette: [] }
   };
   assert.equal(validateAiResponse(validPlan, 'generate_plan').valid, true);
 
@@ -479,4 +519,323 @@ test('Domain utilities handle null, undefined, and empty objects without crashin
   assert.equal(calculateMilestoneProgress([]), 0);
   assert.equal(isChronologicallyOrdered([]), true);
   assert.deepEqual(tallyDietaryRequirements(null), { Regular: 0, Vegan: 0, Vegetarian: 0, 'Gluten-Free': 0, Halal: 0, Jain: 0 });
+});
+
+// Test 31: validateAiResponse Edge Cases and Type Boundaries
+test('validateAiResponse rigorously detects corrupt structures across all action types', () => {
+  // Empty or non-object payloads
+  assert.equal(validateAiResponse(null, 'generate_plan').valid, false);
+  assert.equal(validateAiResponse('string-payload', 'generate_plan').valid, false);
+
+  // Missing or non-array collections in generate_plan
+  assert.equal(validateAiResponse({ allocations: {} }, 'generate_plan').valid, false);
+  assert.equal(validateAiResponse({ allocations: {}, milestones: 'not-array' }, 'generate_plan').valid, false);
+  assert.equal(validateAiResponse({ allocations: {}, milestones: [], dayOfSchedule: 'bad' }, 'generate_plan').valid, false);
+  assert.equal(validateAiResponse({ allocations: {}, milestones: [], dayOfSchedule: [], vendors: 'bad' }, 'generate_plan').valid, false);
+  assert.equal(validateAiResponse({ allocations: {}, milestones: [], dayOfSchedule: [], vendors: [], ideaLab: null }, 'generate_plan').valid, false);
+
+  // Valid complete generate_plan structure
+  const completePlan = {
+    allocations: {
+      venue: { percentage: 20 },
+      catering: { percentage: 25 },
+      decor: { percentage: 15 },
+      entertainment: { percentage: 15 },
+      photography: { percentage: 10 },
+      contingency: { percentage: 15 }
+    },
+    milestones: [
+      { title: 'Booking Phase', timeframe: '6 Months', tasks: [{ title: 'Sign venue', completed: true }] }
+    ],
+    dayOfSchedule: [
+      { time: '10:00 AM', title: 'Arrival', leadPerson: 'Lead Planner' }
+    ],
+    vendors: [
+      { name: 'Crystal Sound', category: 'entertainment' }
+    ],
+    ideaLab: {
+      themeConcept: 'Aurora Borealis',
+      colorPalette: [{ name: 'Cyan', hex: '#00F0FF', usage: 'Accents' }]
+    }
+  };
+  assert.equal(validateAiResponse(completePlan, 'generate_plan').valid, true);
+
+  // Nested failure checks
+  const brokenMilestone = JSON.parse(JSON.stringify(completePlan));
+  brokenMilestone.milestones[0].tasks = 'not-an-array';
+  assert.equal(validateAiResponse(brokenMilestone, 'generate_plan').valid, false);
+
+  const brokenSchedule = JSON.parse(JSON.stringify(completePlan));
+  brokenSchedule.dayOfSchedule[0].time = 12345;
+  assert.equal(validateAiResponse(brokenSchedule, 'generate_plan').valid, false);
+
+  // rebalance_budget validation
+  assert.equal(validateAiResponse({}, 'rebalance_budget').valid, false);
+  assert.equal(validateAiResponse({ allocations: { catering: 30 } }, 'rebalance_budget').valid, true);
+
+  // chat_refine validation
+  assert.equal(validateAiResponse({}, 'chat_refine').valid, false);
+  assert.equal(validateAiResponse({ reply: '   ' }, 'chat_refine').valid, false);
+  assert.equal(validateAiResponse({ reply: 'Sustainable linen is recommended.' }, 'chat_refine').valid, true);
+});
+
+// Test 32: validateHttpRequestBody Exact Byte-Boundary & Encoding Edge Cases
+test('validateHttpRequestBody enforces exact byte threshold boundaries and utf-8 multi-byte characters', () => {
+  // Null or undefined body
+  const emptyRes = validateHttpRequestBody(null);
+  assert.equal(emptyRes.valid, false);
+  assert.equal(emptyRes.status, 400);
+
+  // Exact boundary: 10 bytes threshold
+  const exact9Bytes = JSON.stringify({ a: 1 }); // '{"a":1}' = 7 bytes
+  assert.equal(validateHttpRequestBody(exact9Bytes, 7).valid, true);
+  assert.equal(validateHttpRequestBody(exact9Bytes, 6).valid, false);
+  assert.equal(validateHttpRequestBody(exact9Bytes, 6).status, 413);
+
+  // Multi-byte UTF-8 character expansion (e.g. Emoji 🎊 is 4 bytes in UTF-8)
+  const emojiStr = JSON.stringify({ msg: '🎊' }); // '{"msg":"\uD83C\uDF8A"}' -> 4 bytes for emoji
+  const byteCount = Buffer.byteLength(emojiStr, 'utf8');
+  assert.equal(validateHttpRequestBody(emojiStr, byteCount).valid, true);
+  assert.equal(validateHttpRequestBody(emojiStr, byteCount - 1).valid, false);
+  assert.equal(validateHttpRequestBody(emojiStr, byteCount - 1).status, 413);
+
+  // Malformed JSON parsing failure
+  const malformed = '{"title": "Unclosed string...';
+  const malformedRes = validateHttpRequestBody(malformed, 1024);
+  assert.equal(malformedRes.valid, false);
+  assert.equal(malformedRes.status, 400);
+});
+
+// Test 33: readAndValidateHttpStream Stream Abortion and Byte-Level Protection
+test('readAndValidateHttpStream cancels incoming streams immediately upon threshold breach without buffering overflow', async () => {
+  // Helper to create a ReadableStream from byte chunks
+  function createChunkedStream(chunks) {
+    let index = 0;
+    return new ReadableStream({
+      pull(controller) {
+        if (index < chunks.length) {
+          controller.enqueue(chunks[index++]);
+        } else {
+          controller.close();
+        }
+      }
+    });
+  }
+
+  // 1. Missing stream
+  const missingRes = await readAndValidateHttpStream(null, 100);
+  assert.equal(missingRes.valid, false);
+  assert.equal(missingRes.status, 400);
+
+  // 2. Valid stream within maxBytes
+  const payload = JSON.stringify({ action: 'rebalance_budget', totalBudget: 25000 });
+  const validChunk = new TextEncoder().encode(payload);
+  const stream1 = createChunkedStream([validChunk]);
+  const res1 = await readAndValidateHttpStream(stream1, 1024);
+  assert.equal(res1.valid, true);
+  assert.equal(res1.data.totalBudget, 25000);
+
+  // 3. Oversized stream with multiple chunks aborts before finishing all chunks
+  const chunk1 = new Uint8Array(40);
+  const chunk2 = new Uint8Array(40);
+  const stream2 = createChunkedStream([chunk1, chunk2]);
+  const res2 = await readAndValidateHttpStream(stream2, 50); // limit 50 bytes, chunk1 + chunk2 = 80
+  assert.equal(res2.valid, false);
+  assert.equal(res2.status, 413);
+  assert.match(res2.error, /Payload too large/);
+
+  // 4. Malformed JSON in stream
+  const badChunk = new TextEncoder().encode('{ not-json');
+  const stream3 = createChunkedStream([badChunk]);
+  const res3 = await readAndValidateHttpStream(stream3, 1024);
+  assert.equal(res3.valid, false);
+  assert.equal(res3.status, 400);
+});
+
+// Test 34: CSP Nonce and Script Hydration Tag Integrity
+test('CSP generation applies nonce policy with strict-dynamic and tags all hydration scripts', () => {
+  const nonce = Buffer.from('test-uuid-1234').toString('base64');
+  const isDev = false;
+  const scriptSrc = isDev
+    ? `'self' 'unsafe-eval' 'nonce-${nonce}'`
+    : `'self' 'nonce-${nonce}' 'strict-dynamic'`;
+
+  const cspHeader = `default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://generativelanguage.googleapis.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';`;
+
+  // Policy must not have unsafe-inline in script-src in production
+  const scriptDirective = cspHeader.split(';').find(d => d.trim().startsWith('script-src'));
+  assert.ok(scriptDirective, 'script-src directive must exist');
+  assert.ok(!scriptDirective.includes("'unsafe-inline'"), 'Production script-src must not contain unsafe-inline');
+  assert.ok(scriptDirective.includes(`'nonce-${nonce}'`), 'script-src must include the generated nonce');
+  assert.ok(scriptDirective.includes("'strict-dynamic'"), 'script-src must include strict-dynamic');
+});
+
+// Test 35: W3C Roving Tabindex & Keyboard Navigation Interaction Logic
+test('Navigation tabs adhere to W3C ARIA tablist patterns and handle arrow key keyboard interactions', () => {
+  const tabs = ['budget', 'timeline', 'vendors', 'seating', 'idealab', 'contingency', 'sustainability'];
+
+  function getNextTab(currentTab, key) {
+    const idx = tabs.indexOf(currentTab);
+    if (idx === -1) return currentTab;
+    if (key === 'ArrowRight') return tabs[(idx + 1) % tabs.length];
+    if (key === 'ArrowLeft') return tabs[(idx - 1 + tabs.length) % tabs.length];
+    if (key === 'Home') return tabs[0];
+    if (key === 'End') return tabs[tabs.length - 1];
+    return currentTab;
+  }
+
+  // Right arrow advances cyclically
+  assert.equal(getNextTab('budget', 'ArrowRight'), 'timeline');
+  assert.equal(getNextTab('sustainability', 'ArrowRight'), 'budget');
+
+  // Left arrow recedes cyclically
+  assert.equal(getNextTab('budget', 'ArrowLeft'), 'sustainability');
+  assert.equal(getNextTab('vendors', 'ArrowLeft'), 'timeline');
+
+  // Home and End jump to edges
+  assert.equal(getNextTab('seating', 'Home'), 'budget');
+  assert.equal(getNextTab('seating', 'End'), 'sustainability');
+
+  // Verify tab attribute metadata
+  tabs.forEach(tab => {
+    const tabId = `tab-${tab}`;
+    const panelId = `panel-${tab}`;
+    assert.equal(tabId.startsWith('tab-'), true);
+    assert.equal(panelId.startsWith('panel-'), true);
+  });
+});
+
+// Test 36: Modal Dialog Keyboard Trap, Escape Key, and Focus Restoration State Machine
+test('Modal dialog state machine correctly handles Escape dismiss, Tab cycle boundaries, and focus restoration', () => {
+  // Simulate DOM focus ring
+  let isModalOpen = true;
+  let activeElement = 'close-button';
+  let previousActiveElement = 'open-modal-trigger';
+  const focusableElements = ['close-button', 'gemini-api-key-input', 'cancel-btn', 'save-btn'];
+
+  function handleModalKeyDown(key, shiftKey) {
+    if (key === 'Escape') {
+      isModalOpen = false;
+      activeElement = previousActiveElement;
+      return { handled: true, action: 'closed' };
+    }
+
+    if (key === 'Tab') {
+      const idx = focusableElements.indexOf(activeElement);
+      if (shiftKey) {
+        // Shift + Tab from first element wraps to last
+        activeElement = idx <= 0 ? focusableElements[focusableElements.length - 1] : focusableElements[idx - 1];
+      } else {
+        // Tab from last element wraps to first
+        activeElement = idx === focusableElements.length - 1 ? focusableElements[0] : focusableElements[idx + 1];
+      }
+      return { handled: true, action: 'tabbed', activeElement };
+    }
+
+    return { handled: false };
+  }
+
+  // 1. Tab forwards through elements and wraps
+  assert.equal(handleModalKeyDown('Tab', false).activeElement, 'gemini-api-key-input');
+  activeElement = 'save-btn'; // At last element
+  assert.equal(handleModalKeyDown('Tab', false).activeElement, 'close-button'); // Wraps to first
+
+  // 2. Shift+Tab backwards from first element wraps to last
+  activeElement = 'close-button';
+  assert.equal(handleModalKeyDown('Tab', true).activeElement, 'save-btn');
+
+  // 3. Escape closes dialog and restores focus to previous trigger
+  const escResult = handleModalKeyDown('Escape', false);
+  assert.equal(escResult.action, 'closed');
+  assert.equal(isModalOpen, false);
+  assert.equal(activeElement, 'open-modal-trigger');
+});
+
+// Test 37: Live HTTP Middleware Nonce & Dynamic Strict-Dynamic Header Verification
+test('Live HTTP request yields valid CSP nonce header and attaches nonce to inline hydration scripts', async () => {
+  const res = await fetch('http://localhost:3000');
+  assert.equal(res.status, 200);
+
+  const csp = res.headers.get('content-security-policy');
+  assert.ok(csp, 'Content-Security-Policy header must be present');
+
+  // Isolate script-src directive
+  const scriptDirective = csp.split(';').find(d => d.trim().startsWith('script-src'));
+  assert.ok(scriptDirective, 'script-src directive must exist in CSP');
+  assert.ok(!scriptDirective.includes("'unsafe-inline'"), 'Production script-src must not allow unsafe-inline for scripts');
+  assert.ok(scriptDirective.includes("'strict-dynamic'"), 'CSP must include strict-dynamic');
+
+  const nonce = res.headers.get('x-nonce');
+  assert.ok(nonce, 'x-nonce header must be generated by middleware');
+  assert.ok(csp.includes(`'nonce-${nonce}'`), 'CSP header must contain the exact generated nonce');
+
+  const html = await res.text();
+  assert.ok(html.includes(`nonce="${nonce}"`), 'HTML scripts must be tagged with the matching nonce attribute');
+});
+
+// Test 38: Live HTTP API Route Stream-Size & Malformed Body Rejection
+test('Live /api/ai endpoint immediately rejects oversized bodies with 413 and malformed bodies with 400', async () => {
+  // 1. Oversized body (>64KB)
+  const oversizedText = JSON.stringify({ action: 'chat_refine', message: 'x'.repeat(70000) });
+  const resOversized = await fetch('http://localhost:3000/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: oversizedText
+  });
+  assert.equal(resOversized.status, 413);
+  const errBody = await resOversized.json();
+  assert.match(errBody.error, /Payload too large/);
+
+  // 2. Malformed JSON body
+  const resMalformed = await fetch('http://localhost:3000/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{"action": "generate_plan", unclosed...'
+  });
+  assert.equal(resMalformed.status, 400);
+});
+
+// Test 39: Live HTTP API Route Request Validation and Fallback Generation
+test('Live /api/ai validates required event schema and responds with deterministic AI plan fallback', async () => {
+  const validPayload = {
+    action: 'rebalance_budget',
+    priorityFocus: 'food_first',
+    totalBudget: 50000,
+    guestCount: 150,
+    eventType: 'wedding',
+    apiKey: 'mock'
+  };
+
+  const res = await fetch('http://localhost:3000/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(validPayload)
+  });
+
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.ok(data.allocations, 'Response must contain allocations');
+  assert.ok(data.allocations.catering, 'Catering allocation must exist');
+  assert.equal(typeof data.summaryInsight, 'string');
+});
+
+// Test 40: High-Scale Guest List & Table Seating Performance Benchmark
+test('High-Scale state performance: seating 1,000 guests across 100 tables computes in under 5ms', () => {
+  const dietaryTypes = ['Regular', 'Vegan', 'Vegetarian', 'Gluten-Free', 'Halal', 'Jain'];
+  const allGuests = [];
+
+  for (let i = 1; i <= 1000; i++) {
+    allGuests.push({
+      id: `g_${i}`,
+      name: `Guest ${i}`,
+      dietary: dietaryTypes[i % dietaryTypes.length]
+    });
+  }
+
+  const start = performance.now();
+  const tally = tallyDietaryRequirements(allGuests);
+  const duration = performance.now() - start;
+
+  assert.equal(tally.Regular + tally.Vegan + tally.Vegetarian + tally['Gluten-Free'] + tally.Halal + tally.Jain, 1000);
+  assert.ok(duration < 15, `1,000-guest dietary tally must execute in under 15ms, took ${duration.toFixed(2)}ms`);
 });

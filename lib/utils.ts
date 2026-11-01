@@ -27,6 +27,7 @@ import {
   sanitizePromptString as _sanitizePromptString,
   validatePersistedState as _validatePersistedState,
   validateHttpRequestBody as _validateHttpRequestBody,
+  readAndValidateHttpStream as _readAndValidateHttpStream,
   validateAiResponse as _validateAiResponse
 } from "./businessLogic.mjs";
 
@@ -59,6 +60,7 @@ export const checkRateLimit = _checkRateLimit;
 export const sanitizePromptString = _sanitizePromptString;
 export const validatePersistedState = _validatePersistedState;
 export const validateHttpRequestBody = _validateHttpRequestBody;
+export const readAndValidateHttpStream = _readAndValidateHttpStream;
 export const validateAiResponse = _validateAiResponse;
 
 export function calculatePerGuest(total: number, guestCount: number, currency: Currency = 'USD'): string {

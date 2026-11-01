@@ -105,9 +105,9 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-white via-cyan-200 to-purple-300 bg-clip-text text-transparent">
+                  <h1 className="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-white via-cyan-200 to-purple-300 bg-clip-text text-transparent m-0 p-0 leading-tight">
                     EventVerse
-                  </span>
+                  </h1>
                   <Badge variant="luxury" size="sm" className="hidden sm:inline-flex">
                     AI Architect
                   </Badge>
@@ -335,17 +335,21 @@ export const Header: React.FC<HeaderProps> = ({
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            <label htmlFor="gemini-api-key-input" className="block text-xs font-semibold text-slate-300 mb-1.5">
               Gemini API Key
             </label>
             <input
+              id="gemini-api-key-input"
               type="password"
+              autoComplete="off"
+              aria-label="Google Gemini API Key"
+              aria-describedby="gemini-api-key-help"
               placeholder="AIzaSy..."
               value={tempKey}
               onChange={(e) => setTempKey(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono"
             />
-            <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
+            <p id="gemini-api-key-help" className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
               <span>Get a free key from</span>
               <a
                 href="https://aistudio.google.com/app/apikey"

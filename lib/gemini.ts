@@ -91,29 +91,30 @@ export async function callGeminiAPI(
     };
   }
 
-  for (const model of candidateModels) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bodyPayload)
-      });
+    for (const model of candidateModels) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(bodyPayload),
+          signal: AbortSignal.timeout(3500)
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (candidateText) {
-          return { text: candidateText, isLive: true };
+        if (response.ok) {
+          const data = await response.json();
+          const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidateText) {
+            return { text: candidateText, isLive: true };
+          }
+        } else {
+          const errText = await response.text().catch(() => "");
+          console.warn(`Model ${model} returned ${response.status}: ${errText.substring(0, 100)}... trying next model`);
         }
-      } else {
-        const errText = await response.text();
-        console.warn(`Model ${model} returned ${response.status}: ${errText.substring(0, 100)}... trying next model`);
+      } catch (modelErr) {
+        console.warn(`Network error with model ${model}:`, modelErr);
       }
-    } catch (modelErr) {
-      console.warn(`Network error with model ${model}:`, modelErr);
     }
-  }
 
   return { text: "", isLive: false };
 }
