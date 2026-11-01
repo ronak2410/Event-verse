@@ -13,6 +13,7 @@ import {
 import { TEMPLATE_WEDDING, TEMPLATE_BIRTHDAY, TEMPLATE_CORPORATE, TEMPLATE_ROYAL_SANGEET, buildCategoryAllocations } from "@/lib/mockData";
 import { generateDeterministicSmartPlan } from "@/lib/gemini";
 import { requestGeneratePlan, requestRebalanceBudget, requestChatRefine } from "@/lib/services/eventService";
+import { validatePersistedState } from "@/lib/utils";
 
 const STORAGE_KEY = "eventverse_state_v1";
 
@@ -23,13 +24,18 @@ export function useEventState() {
   const [userApiKey, setUserApiKey] = useState<string>("");
   const [activeTab, setActiveTab] = useState<'budget' | 'timeline' | 'vendors' | 'idealab' | 'seating' | 'contingency' | 'sustainability'>('budget');
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount with strict runtime schema validation
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        setState(parsed);
+        const validation = validatePersistedState(parsed);
+        if (validation.valid) {
+          setState(parsed as EventVerseState);
+        } else {
+          console.warn("Discarded invalid persisted EventVerse state from localStorage:", validation.error);
+        }
       }
     } catch (e) {
       console.error("Failed to load EventVerse state from localStorage:", e);

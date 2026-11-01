@@ -68,20 +68,27 @@ export const Header: React.FC<HeaderProps> = ({
     const currentIndex = tabKeys.indexOf(currentTab);
     if (currentIndex === -1) return;
 
+    let targetTab: EventTabType | null = null;
     if (e.key === 'ArrowRight') {
       e.preventDefault();
-      const nextIndex = (currentIndex + 1) % tabKeys.length;
-      setActiveTab(tabKeys[nextIndex]);
+      targetTab = tabKeys[(currentIndex + 1) % tabKeys.length];
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      const prevIndex = (currentIndex - 1 + tabKeys.length) % tabKeys.length;
-      setActiveTab(tabKeys[prevIndex]);
+      targetTab = tabKeys[(currentIndex - 1 + tabKeys.length) % tabKeys.length];
     } else if (e.key === 'Home') {
       e.preventDefault();
-      setActiveTab(tabKeys[0]);
+      targetTab = tabKeys[0];
     } else if (e.key === 'End') {
       e.preventDefault();
-      setActiveTab(tabKeys[tabKeys.length - 1]);
+      targetTab = tabKeys[tabKeys.length - 1];
+    }
+
+    if (targetTab) {
+      setActiveTab(targetTab);
+      // Explicitly move keyboard focus to newly selected tab per W3C WAI-ARIA guidelines
+      requestAnimationFrame(() => {
+        document.getElementById(`tab-${targetTab}`)?.focus();
+      });
     }
   };
 
@@ -180,7 +187,9 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Pillar Navigation Tabs */}
           <nav aria-label="Event Planning Pillars" role="tablist" className="flex space-x-1 sm:space-x-2 border-t border-slate-800/80 overflow-x-auto no-scrollbar py-2">
             <button
+              id="tab-budget"
               role="tab"
+              aria-controls="panel-budget"
               tabIndex={activeTab === 'budget' ? 0 : -1}
               aria-selected={activeTab === 'budget'}
               aria-label="Dynamic Budget Estimator"
@@ -197,7 +206,9 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
+              id="tab-timeline"
               role="tab"
+              aria-controls="panel-timeline"
               tabIndex={activeTab === 'timeline' ? 0 : -1}
               aria-selected={activeTab === 'timeline'}
               aria-label="Timeline and Day-of Schedule"
@@ -214,7 +225,9 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
+              id="tab-vendors"
               role="tab"
+              aria-controls="panel-vendors"
               tabIndex={activeTab === 'vendors' ? 0 : -1}
               aria-selected={activeTab === 'vendors'}
               aria-label="Vendor Checklist"
@@ -234,7 +247,9 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
+              id="tab-seating"
               role="tab"
+              aria-controls="panel-seating"
               tabIndex={activeTab === 'seating' ? 0 : -1}
               aria-selected={activeTab === 'seating'}
               aria-label="Floorplan and Seating"
@@ -251,7 +266,9 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
+              id="tab-idealab"
               role="tab"
+              aria-controls="panel-idealab"
               tabIndex={activeTab === 'idealab' ? 0 : -1}
               aria-selected={activeTab === 'idealab'}
               aria-label="Personalized AI Idea Lab"
@@ -268,7 +285,9 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
+              id="tab-contingency"
               role="tab"
+              aria-controls="panel-contingency"
               tabIndex={activeTab === 'contingency' ? 0 : -1}
               aria-selected={activeTab === 'contingency'}
               aria-label="Plan B Weather and Failover"
@@ -285,7 +304,9 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
+              id="tab-sustainability"
               role="tab"
+              aria-controls="panel-sustainability"
               tabIndex={activeTab === 'sustainability' ? 0 : -1}
               aria-selected={activeTab === 'sustainability'}
               aria-label="ESG Carbon and Eco Assessment"

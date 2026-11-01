@@ -1,45 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateFullEventPlan, callGeminiAPI, EVENT_PLANNER_SYSTEM_PROMPT } from "@/lib/gemini";
 import { EventDetails } from "@/lib/types";
-import { validateAiRequestPayload } from "@/lib/utils";
+import { 
+  validateAiRequestPayload, 
+  getClientIp, 
+  checkRateLimit, 
+  sanitizePromptString, 
+  validateHttpRequestBody 
+} from "@/lib/utils";
 
 // In-Memory IP Rate Limiter (sliding window 60s, max 30 requests per minute per IP)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
-function checkRateLimit(ip: string): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  const windowMs = 60 * 1000;
-  const maxRequests = 30;
-
-  const current = rateLimitMap.get(ip);
-  if (!current || now > current.resetTime) {
-    rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
-    return { allowed: true, remaining: maxRequests - 1 };
-  }
-
-  if (current.count >= maxRequests) {
-    return { allowed: false, remaining: 0 };
-  }
-
-  current.count += 1;
-  return { allowed: true, remaining: maxRequests - current.count };
-}
-
-/**
- * Sanitizes user input string before prompt interpolation:
- * Strips control/unprintable characters, trims whitespace, and caps length to prevent prompt injection overflow.
- */
-function sanitizePromptString(input: unknown, maxLength = 500): string {
-  if (typeof input !== "string") return "";
-  return input
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
-    .trim()
-    .slice(0, maxLength);
+interface AiRequestBody {
+  action?: string;
+  event?: Partial<EventDetails>;
+  message?: string;
+  apiKey?: string;
+  priorityFocus?: EventDetails['priorityFocus'];
+  totalBudget?: number;
+  guestCount?: number;
+  eventType?: string;
 }
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Payload Size Guard (DoS prevention: max 64KB body)
+    // 1. Pre-read Payload Size Header Guard (DoS prevention: max 64KB)
     const contentLength = req.headers.get("content-length");
     if (contentLength && parseInt(contentLength, 10) > 65536) {
       return NextResponse.json(
@@ -48,10 +34,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. IP-based Rate Limiting check
-    const forwarded = req.headers.get("x-forwarded-for");
-    const ip = (forwarded ? forwarded.split(",")[0] : req.headers.get("x-real-ip")) || "127.0.0.1";
-    const { allowed, remaining } = checkRateLimit(ip);
+    // 2. Trusted Client IP derivation (evaluates host edge headers & rightmost proxy hop)
+    const ip = getClientIp(req.headers);
+    const { allowed, remaining } = checkRateLimit(ip, rateLimitMap, 30, 60000);
 
     if (!allowed) {
       return NextResponse.json(
@@ -67,8 +52,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Body parsing and strict schema validation
-    const rawBody = await req.json().catch(() => null);
+    // 3. Byte-level body reading and verification (guards against missing or spoofed Content-Length)
+    const rawText = await req.text().catch(() => null);
+    const bodyValidation = validateHttpRequestBody(rawText, 65536);
+    if (!bodyValidation.valid) {
+      return NextResponse.json(
+        { error: bodyValidation.error }, 
+        { status: bodyValidation.status || 400 }
+      );
+    }
+
+    const rawBody = bodyValidation.data as AiRequestBody;
+
+    // 4. Strict request payload schema validation
     const validation = validateAiRequestPayload(rawBody);
     if (!validation.valid) {
       return NextResponse.json({ error: validation.error }, { status: 400 });

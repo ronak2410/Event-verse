@@ -136,7 +136,7 @@ export const PrintExportModal: React.FC<PrintExportModalProps> = ({ isOpen, onCl
         {/* Action Buttons */}
         <div className="flex items-center justify-between pt-2">
           <span className="text-xs text-slate-400">
-            💡 Opens system print dialogue (Select "Save as PDF" to export).
+            💡 Opens system print dialogue (Select &ldquo;Save as PDF&rdquo; to export).
           </span>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={onClose}>

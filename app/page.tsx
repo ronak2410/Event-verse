@@ -94,67 +94,76 @@ export default function Home() {
         {/* At-a-glance Stat Highlights */}
         <StatHighlights state={state} />
 
-        {/* Tab 1: Dynamic Budget Estimator */}
-        {activeTab === "budget" && (
-          <BudgetSection
-            state={state}
-            onUpdatePercentage={updateCategoryPercentage}
-            onNormalize={normalizeAllocations}
-            onApplyAIRebalance={applyAIRebalance}
-            onUpdateTotalBudget={(totalBudget) => updateEventDetails({ totalBudget })}
-            isAiLoading={isAiLoading}
-          />
-        )}
+        {/* Accessible W3C Tabpanel Container */}
+        <section
+          role="tabpanel"
+          id={`panel-${activeTab}`}
+          aria-labelledby={`tab-${activeTab}`}
+          tabIndex={0}
+          className="focus:outline-none"
+        >
+          {/* Tab 1: Dynamic Budget Estimator */}
+          {activeTab === "budget" && (
+            <BudgetSection
+              state={state}
+              onUpdatePercentage={updateCategoryPercentage}
+              onNormalize={normalizeAllocations}
+              onApplyAIRebalance={applyAIRebalance}
+              onUpdateTotalBudget={(totalBudget) => updateEventDetails({ totalBudget })}
+              isAiLoading={isAiLoading}
+            />
+          )}
 
-        {/* Tab 2: Timeline & Day-of Schedule */}
-        {activeTab === "timeline" && (
-          <TimelineSection
-            state={state}
-            onToggleMilestoneTask={toggleMilestoneTask}
-            onAddMilestoneTask={addMilestoneTask}
-            onToggleDayOfItem={toggleDayOfItem}
-            onAddDayOfItem={addDayOfItem}
-          />
-        )}
+          {/* Tab 2: Timeline & Day-of Schedule */}
+          {activeTab === "timeline" && (
+            <TimelineSection
+              state={state}
+              onToggleMilestoneTask={toggleMilestoneTask}
+              onAddMilestoneTask={addMilestoneTask}
+              onToggleDayOfItem={toggleDayOfItem}
+              onAddDayOfItem={addDayOfItem}
+            />
+          )}
 
-        {/* Tab 3: Interactive Vendor Checklist */}
-        {activeTab === "vendors" && (
-          <VendorSection
-            state={state}
-            onUpdateVendorStatus={updateVendorStatus}
-            onAddVendor={addVendor}
-            onUpdateVendor={updateVendor}
-            onDeleteVendor={deleteVendor}
-          />
-        )}
+          {/* Tab 3: Interactive Vendor Checklist */}
+          {activeTab === "vendors" && (
+            <VendorSection
+              state={state}
+              onUpdateVendorStatus={updateVendorStatus}
+              onAddVendor={addVendor}
+              onUpdateVendor={updateVendor}
+              onDeleteVendor={deleteVendor}
+            />
+          )}
 
-        {/* Tab 4: Personalized AI Idea Lab */}
-        {activeTab === "idealab" && (
-          <IdeaLabSection
-            state={state}
-            onSendMessage={sendIdeaLabMessage}
-            isAiLoading={isAiLoading}
-          />
-        )}
+          {/* Tab 4: Personalized AI Idea Lab */}
+          {activeTab === "idealab" && (
+            <IdeaLabSection
+              state={state}
+              onSendMessage={sendIdeaLabMessage}
+              isAiLoading={isAiLoading}
+            />
+          )}
 
-        {/* Tab 5: Interactive 3D Seating Chart & Dietary Floorplan */}
-        {activeTab === "seating" && (
-          <SeatingSection
-            state={state}
-            onAddGuest={addGuestToTable}
-            onRemoveGuest={removeGuestFromTable}
-          />
-        )}
+          {/* Tab 5: Interactive 3D Seating Chart & Dietary Floorplan */}
+          {activeTab === "seating" && (
+            <SeatingSection
+              state={state}
+              onAddGuest={addGuestToTable}
+              onRemoveGuest={removeGuestFromTable}
+            />
+          )}
 
-        {/* Tab 6: Plan B Weather & Contingency Matrix */}
-        {activeTab === "contingency" && (
-          <ContingencyMatrixSection event={state.event} />
-        )}
+          {/* Tab 6: Plan B Weather & Contingency Matrix */}
+          {activeTab === "contingency" && (
+            <ContingencyMatrixSection event={state.event} />
+          )}
 
-        {/* Tab 7: AI Carbon & ESG Sustainability Engine */}
-        {activeTab === "sustainability" && (
-          <SustainabilitySection event={state.event} />
-        )}
+          {/* Tab 7: AI Carbon & ESG Sustainability Engine */}
+          {activeTab === "sustainability" && (
+            <SustainabilitySection event={state.event} />
+          )}
+        </section>
       </main>
 
       {/* Event Setup Wizard Modal */}

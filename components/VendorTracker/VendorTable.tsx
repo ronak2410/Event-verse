@@ -107,7 +107,7 @@ export const VendorTable: React.FC<VendorTableProps> = ({
       {filteredVendors.length === 0 ? (
         <div className="p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-800">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            No vendors matching this filter. Click "+ Add Vendor" to add a new contact.
+            No vendors matching this filter. Click &ldquo;+ Add Vendor&rdquo; to add a new contact.
           </p>
         </div>
       ) : (

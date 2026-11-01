@@ -54,7 +54,23 @@ export async function callGeminiAPI(
     "gemini-1.5-flash"
   ].filter(Boolean) as string[];
 
-  const bodyPayload: any = {
+  interface GeminiRequestBody {
+    contents: Array<{
+      role: string;
+      parts: Array<{ text: string }>;
+    }>;
+    generationConfig: {
+      temperature: number;
+      topK: number;
+      topP: number;
+      responseMimeType: string;
+    };
+    systemInstruction?: {
+      parts: Array<{ text: string }>;
+    };
+  }
+
+  const bodyPayload: GeminiRequestBody = {
     contents: [
       {
         role: "user",

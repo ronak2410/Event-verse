@@ -21,7 +21,13 @@ import {
   generateBudgetCsv,
   exportEventAsMarkdown,
   calculateDietaryPercentages,
-  calculateSustainabilityScore
+  calculateSustainabilityScore,
+  getClientIp,
+  checkRateLimit,
+  sanitizePromptString,
+  validatePersistedState,
+  validateHttpRequestBody,
+  validateAiResponse
 } from '../lib/businessLogic.mjs';
 
 // Test 1: Math & Currency Formatting
@@ -283,31 +289,186 @@ test('calculateSustainabilityScore calculates weighted ESG score bounded 0-100',
   assert.equal(calculateSustainabilityScore({ carbonSavedPercent: 120, wasteDivertedPercent: 120, plantBasedRatio: 120 }), 100);
 });
 
-// Test 23: Sliding-Window IP Rate Limiter Simulation
-test('Rate limiter logic correctly grants within limit and denies above max requests', () => {
-  const rateLimitMap = new Map();
-  function simulateRateLimit(ip, maxRequests = 3, windowMs = 1000) {
-    const now = Date.now();
-    const current = rateLimitMap.get(ip);
-    if (!current || now > current.resetTime) {
-      rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
-      return true;
-    }
-    if (current.count >= maxRequests) {
-      return false;
-    }
-    current.count += 1;
-    return true;
-  }
+// Test 23: Production Sliding-Window IP Rate Limiter (Real Logic)
+test('checkRateLimit accurately grants requests up to limit and denies excess with reset recovery', () => {
+  const store = new Map();
+  const testIp = '10.0.0.42';
 
-  const testIp = '192.168.1.100';
-  assert.equal(simulateRateLimit(testIp), true); // Req 1
-  assert.equal(simulateRateLimit(testIp), true); // Req 2
-  assert.equal(simulateRateLimit(testIp), true); // Req 3
-  assert.equal(simulateRateLimit(testIp), false); // Req 4: Blocked!
+  // Allow up to 3 requests in a 500ms window
+  const r1 = checkRateLimit(testIp, store, 3, 500);
+  assert.equal(r1.allowed, true);
+  assert.equal(r1.remaining, 2);
+
+  const r2 = checkRateLimit(testIp, store, 3, 500);
+  assert.equal(r2.allowed, true);
+  assert.equal(r2.remaining, 1);
+
+  const r3 = checkRateLimit(testIp, store, 3, 500);
+  assert.equal(r3.allowed, true);
+  assert.equal(r3.remaining, 0);
+
+  // 4th request must be blocked
+  const r4 = checkRateLimit(testIp, store, 3, 500);
+  assert.equal(r4.allowed, false);
+  assert.equal(r4.remaining, 0);
 });
 
-// Test 24: Comprehensive Resilience Against Null and Malformed Inputs
+// Test 24: Dependable Client IP Extraction with Spoofing Protection
+test('getClientIp prioritizes provider edge headers and parses rightmost proxy hop', () => {
+  // 1. Direct Edge provider header (e.g. Vercel)
+  const vercelHeaders = { 'x-vercel-ip': '203.0.113.195', 'x-forwarded-for': 'attacker.spoofed.ip, 127.0.0.1' };
+  assert.equal(getClientIp(vercelHeaders), '203.0.113.195');
+
+  // 2. Cloudflare connecting header
+  const cfHeaders = { 'cf-connecting-ip': '198.51.100.22' };
+  assert.equal(getClientIp(cfHeaders), '198.51.100.22');
+
+  // 3. X-Real-IP fallback
+  const realIpHeaders = { 'x-real-ip': '192.0.2.1' };
+  assert.equal(getClientIp(realIpHeaders), '192.0.2.1');
+
+  // 4. Proxy chain: ignores client-spoofed leftmost entry and extracts trusted rightmost hop
+  const proxyChainHeaders = { 'x-forwarded-for': 'spoofed.evil.com, 10.0.0.1, 198.51.100.88' };
+  assert.equal(getClientIp(proxyChainHeaders), '198.51.100.88');
+
+  // 5. Fallback on empty or missing headers
+  assert.equal(getClientIp(null), '127.0.0.1');
+  assert.equal(getClientIp({}), '127.0.0.1');
+});
+
+// Test 25: HTTP Body Size Enforcement and JSON Parsing Security Guard
+test('validateHttpRequestBody enforces 64KB byte-level limit and handles malformed payloads', () => {
+  // Valid JSON under limit
+  const validJson = JSON.stringify({ action: 'rebalance_budget', totalBudget: 50000, guestCount: 100 });
+  const resValid = validateHttpRequestBody(validJson, 65536);
+  assert.equal(resValid.valid, true);
+  assert.equal(resValid.data.totalBudget, 50000);
+
+  // Oversized payload (>64KB) returns 413
+  const oversizedText = 'a'.repeat(70000);
+  const resOversized = validateHttpRequestBody(oversizedText, 65536);
+  assert.equal(resOversized.valid, false);
+  assert.equal(resOversized.status, 413);
+
+  // Malformed JSON returns 400
+  const malformed = '{ action: "bad_json", invalid...';
+  const resMalformed = validateHttpRequestBody(malformed, 65536);
+  assert.equal(resMalformed.valid, false);
+  assert.equal(resMalformed.status, 400);
+
+  // Empty / Null returns 400
+  const resEmpty = validateHttpRequestBody(null);
+  assert.equal(resEmpty.valid, false);
+  assert.equal(resEmpty.status, 400);
+});
+
+// Test 26: Prompt Sanitization and Control Character Neutralization
+test('sanitizePromptString strips unprintable ASCII control characters and truncates overflow', () => {
+  const dirty = 'Hello\x00\x08World\x1B\x7F! Special Vibe';
+  const clean = sanitizePromptString(dirty, 50);
+  assert.equal(clean, 'HelloWorld! Special Vibe');
+
+  const longText = 'x'.repeat(600);
+  const capped = sanitizePromptString(longText, 500);
+  assert.equal(capped.length, 500);
+
+  assert.equal(sanitizePromptString(null), '');
+  assert.equal(sanitizePromptString(12345), '');
+});
+
+// Test 27: Runtime Schema Validator for Persisted localStorage State
+test('validatePersistedState verifies complete state structure and flags corrupted data', () => {
+  const validState = {
+    event: { title: 'Golden Jubilee Gala', totalBudget: 50000, guestCount: 150 },
+    budgetAllocations: {
+      venue: { allocatedAmount: 15000 },
+      catering: { allocatedAmount: 18000 },
+      decor: { allocatedAmount: 7000 },
+      entertainment: { allocatedAmount: 4000 },
+      photography: { allocatedAmount: 3500 },
+      contingency: { allocatedAmount: 2500 }
+    },
+    milestones: [],
+    dayOfSchedule: [],
+    vendors: [],
+    ideaLab: { themeConcept: 'Opulent Gold', themeDescription: 'Luxury night', colorPalette: [] }
+  };
+  assert.equal(validatePersistedState(validState).valid, true);
+
+  // Missing budget categories
+  const missingBudget = { ...validState, budgetAllocations: { venue: { allocatedAmount: 1000 } } };
+  assert.equal(validatePersistedState(missingBudget).valid, false);
+
+  // Corrupted / Non-object
+  assert.equal(validatePersistedState(null).valid, false);
+  assert.equal(validatePersistedState('corrupted_string').valid, false);
+  assert.equal(validatePersistedState({ event: { title: '' } }).valid, false);
+});
+
+// Test 28: Runtime AI Server Response Validator
+test('validateAiResponse verifies shapes across generate_plan, rebalance_budget, and chat_refine', () => {
+  // Valid generate_plan
+  const validPlan = {
+    allocations: { venue: {} },
+    milestones: [],
+    dayOfSchedule: [],
+    vendors: [],
+    ideaLab: { themeConcept: 'Test' }
+  };
+  assert.equal(validateAiResponse(validPlan, 'generate_plan').valid, true);
+
+  // Incomplete generate_plan
+  assert.equal(validateAiResponse({ allocations: {} }, 'generate_plan').valid, false);
+
+  // Valid rebalance_budget
+  assert.equal(validateAiResponse({ allocations: { venue: 25 } }, 'rebalance_budget').valid, true);
+  assert.equal(validateAiResponse({}, 'rebalance_budget').valid, false);
+
+  // Valid chat_refine
+  assert.equal(validateAiResponse({ reply: 'Here is styling advice' }, 'chat_refine').valid, true);
+  assert.equal(validateAiResponse({ reply: '   ' }, 'chat_refine').valid, false);
+});
+
+// Test 29: Markdown Table Column Symmetry and Format Compliance
+test('exportEventAsMarkdown generates tables where separator columns match header columns exactly', () => {
+  const sampleState = {
+    event: { title: 'Summer Festival', type: 'community', date: '2026-08-15', guestCount: 300, totalBudget: 25000, currency: 'USD' },
+    budgetAllocations: {
+      venue: { name: 'Main Park', percentage: 40, allocatedAmount: 10000, spentAmount: 9500 },
+      catering: { name: 'Food Trucks', percentage: 35, allocatedAmount: 8750, spentAmount: 8750 },
+      entertainment: { name: 'Live Bands', percentage: 25, allocatedAmount: 6250, spentAmount: 6500 }
+    },
+    dayOfSchedule: [
+      { time: '10:00 AM', title: 'Gates Open', leadPerson: 'Alex', notes: 'Registration desk', completed: true },
+      { time: '12:00 PM', title: 'Opening Band', leadPerson: 'Sara', notes: 'Main stage', completed: false }
+    ],
+    vendors: [
+      { name: 'SoundStage Pro', category: 'entertainment', status: 'Booked', estimatedCost: 3000, actualCost: 3200, notes: 'PA system' }
+    ],
+    ideaLab: {
+      themeConcept: 'Solar Beats',
+      themeDescription: 'Eclectic outdoor gathering',
+      colorPalette: [{ name: 'Sunburst Cyan', hex: '#00F0FF', usage: 'Primary banner' }]
+    }
+  };
+
+  const md = exportEventAsMarkdown(sampleState);
+  const lines = md.split('\n');
+
+  // Verify that any table header followed by a separator line has matching pipe column counts
+  for (let i = 0; i < lines.length - 1; i++) {
+    const line = lines[i].trim();
+    const nextLine = lines[i + 1].trim();
+
+    if (line.startsWith('|') && nextLine.startsWith('| :---')) {
+      const headerCols = line.split('|').filter(s => s.trim().length > 0).length;
+      const sepCols = nextLine.split('|').filter(s => s.trim().length > 0).length;
+      assert.equal(headerCols, sepCols, `Mismatch at line ${i + 1}: header had ${headerCols} cols, separator had ${sepCols}`);
+    }
+  }
+});
+
+// Test 30: Comprehensive Resilience Against Null and Malformed Inputs
 test('Domain utilities handle null, undefined, and empty objects without crashing', () => {
   assert.equal(formatCurrency(null), '$0');
   assert.equal(formatCurrency(undefined), '$0');

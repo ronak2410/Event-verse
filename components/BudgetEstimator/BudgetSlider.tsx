@@ -131,7 +131,7 @@ export const BudgetSlider: React.FC<BudgetSliderProps> = ({
         </div>
       ) : category.rationale ? (
         <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 italic line-clamp-1">
-          "{category.rationale}"
+          &ldquo;{category.rationale}&rdquo;
         </p>
       ) : null}
     </div>

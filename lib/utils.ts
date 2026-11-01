@@ -21,7 +21,13 @@ import {
   validateAiRequestPayload as _validateAiRequestPayload,
   generateBudgetCsv as _generateBudgetCsv,
   calculateDietaryPercentages as _calculateDietaryPercentages,
-  calculateSustainabilityScore as _calculateSustainabilityScore
+  calculateSustainabilityScore as _calculateSustainabilityScore,
+  getClientIp as _getClientIp,
+  checkRateLimit as _checkRateLimit,
+  sanitizePromptString as _sanitizePromptString,
+  validatePersistedState as _validatePersistedState,
+  validateHttpRequestBody as _validateHttpRequestBody,
+  validateAiResponse as _validateAiResponse
 } from "./businessLogic.mjs";
 
 export function cn(...inputs: ClassValue[]) {
@@ -48,6 +54,12 @@ export const validateAiRequestPayload = _validateAiRequestPayload;
 export const generateBudgetCsv = _generateBudgetCsv;
 export const calculateDietaryPercentages = _calculateDietaryPercentages;
 export const calculateSustainabilityScore = _calculateSustainabilityScore;
+export const getClientIp = _getClientIp;
+export const checkRateLimit = _checkRateLimit;
+export const sanitizePromptString = _sanitizePromptString;
+export const validatePersistedState = _validatePersistedState;
+export const validateHttpRequestBody = _validateHttpRequestBody;
+export const validateAiResponse = _validateAiResponse;
 
 export function calculatePerGuest(total: number, guestCount: number, currency: Currency = 'USD'): string {
   if (!guestCount || guestCount <= 0) return formatCurrency(0, currency);
@@ -55,7 +67,7 @@ export function calculatePerGuest(total: number, guestCount: number, currency: C
 }
 
 export function exportStateAsMarkdown(state: EventVerseState): string {
-  const { event, budgetAllocations, milestones, dayOfSchedule, vendors, ideaLab } = state;
+  const { event, budgetAllocations, dayOfSchedule, vendors, ideaLab } = state;
   const currency = event.currency;
 
   let md = `# ${event.title}\n`;
@@ -64,7 +76,7 @@ export function exportStateAsMarkdown(state: EventVerseState): string {
 
   md += `## 1. Budget Breakdown\n`;
   md += `| Category | Allocation % | Amount | Spent | Status |\n`;
-  md += `| :--- | :--- | :--- | :--- |\n`;
+  md += `| :--- | :--- | :--- | :--- | :--- |\n`;
   Object.values(budgetAllocations).forEach(cat => {
     md += `| ${cat.name} | ${cat.percentage}% | ${formatCurrency(cat.allocatedAmount, currency)} | ${formatCurrency(cat.spentAmount, currency)} | ${cat.spentAmount > cat.allocatedAmount ? '⚠️ Over' : '✅ Within'} |\n`;
   });
@@ -72,7 +84,7 @@ export function exportStateAsMarkdown(state: EventVerseState): string {
 
   md += `## 2. Day-of Run of Show\n`;
   md += `| Time | Schedule Milestone | Lead / Contact | Status |\n`;
-  md += `| :--- | :--- | :--- |\n`;
+  md += `| :--- | :--- | :--- | :--- |\n`;
   dayOfSchedule.forEach(item => {
     md += `| ${item.time} | ${item.title} (${item.notes || 'N/A'}) | ${item.leadPerson} | ${item.completed ? '[x] Done' : '[ ] Pending'} |\n`;
   });
