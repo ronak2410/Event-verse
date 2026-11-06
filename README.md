@@ -3,7 +3,7 @@
 > **Full-Stack Generative AI Celebration Architect for Hackathon Evaluation**  
 > Tailored for Weddings, Milestone Birthdays, Corporate Summits, and Heritage Galas.
 
-🔗 **Live Deployment**: [https://event-verse-ronak.vercel.app](https://github.com/ronak2410/Event-verse) *(or your Vercel deployment URL)*  
+🔗 **Live Deployment**: [https://event-verse-nu.vercel.app](https://event-verse-nu.vercel.app)
 📦 **GitHub Repository**: [https://github.com/ronak2410/Event-verse](https://github.com/ronak2410/Event-verse)
 
 ---
